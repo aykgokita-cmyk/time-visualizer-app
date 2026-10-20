@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>タイムログ - 24時間バーチカル＆習慣可視化</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bgMain: '#FFFFFF',
+                        cardBg: '#F8F9FA',
+                        cardBorder: '#E9ECEF',
+                        catSleep: '#70A1FF',
+                        catSleepLight: '#EBF2FF',
+                        catWork: '#A4B0BE',
+                        catWorkLight: '#F1F2F6',
+                        catLife: '#78E08F',
+                        catLifeLight: '#E8F8F5',
+                        catTransport: '#F7D794',
+                        catTransportLight: '#FFF9E6',
+                        catTravel: '#FAB1A0',
+                        catTravelLight: '#FFF0ED',
+                        catFree: '#FFB8B8',
+                        catFreeLight: '#FFE5E5',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom UI Tweaks & Animations */
+        body {
+            background-color: #FFFFFF;
+            color: #2D3436;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* Hide scrollbars for slick look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Modal Smooth Transition */
+        .modal-backdrop {
+            transition: opacity 0.2s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Discrete Heatmap Grid Styles */
+        .heatmap-cell {
+            transition: all 0.15s ease;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen max-w-md mx-auto bg-white border-x border-gray-100 shadow-2xl relative overflow-hidden font-sans">
+
+    <!-- Header / Top Bar -->
+    <header class="px-5 pt-4 pb-2 border-b border-gray-100 bg-white/90 backdrop-blur z-20 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight text-gray-800 flex items-center gap-2">
+                <i data-lucide="clock" class="w-5 h-5 text-indigo-500"></i>
+                タイムログ
+            </h1>
+            <p class="text-xs text-gray-400 font-medium">時間を可視化して余白をつくる</p>
+        </div>
+        <button id="addEntryBtn" class="bg-gray-900 text-white p-2.5 rounded-2xl shadow-sm hover:bg-gray-800 active:scale-95 transition flex items-center gap-1.5 px-3 text-xs font-semibold">
+            <i data-lucide="plus" class="w-4 h-4"></i> 記録
+        </button>
+    </header>
+
+    <!-- Main Dynamic Content Container -->
+    <main id="appContainer" class="flex-1 overflow-y-auto no-scrollbar pb-20 bg-white">
+        <!-- Screens render here dynamically -->
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur border-t border-gray-100 px-3 py-2 flex justify-around items-center z-30">
+        <button onclick="switchTab('timeline')" id="nav-timeline" class="nav-btn flex flex-col items-center gap-1 text-xs font-medium text-indigo-600 transition">
+            <div class="p-1 rounded-xl bg-indigo-50"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+            <span>タイムライン</span>
+        </button>
+        <button onclick="switchTab('sleep')" id="nav-sleep" class="nav-btn flex flex-col items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition">
+            <div class="p-1 rounded-xl"><i data-lucide="moon" class="w-5 h-5"></i></div>
+            <span>睡眠分析</span>
+        </button>
+        <button onclick="switchTab('heatmap')" id="nav-heatmap" class="nav-btn flex flex-col items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition">
+            <div class="p-1 rounded-xl"><i data-lucide="grid" class="w-5 h-5"></i></div>
+            <span>ヒートマップ</span>
+        </button>
+    </nav>
+
+    <!-- Interactive Entry Creation Modal -->
+    <div id="entryModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center hidden">
+        <div class="modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="modal-content relative bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto no-scrollbar">
+            
+            <div class="flex justify-between items-center mb-5 border-b border-gray-100 pb-3">
+                <h3 class="text-lg font-bold text-gray-800" id="modalTitle">行動の記録・追加</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form id="entryForm" onsubmit="handleFormSubmit(event)" class="space-y-5">
+                <input type="hidden" id="entryId">
+
+                <!-- Time Range -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">開始時間</label>
+                        <input type="time" id="startTime" required class="w-full bg-cardBg border border-cardBorder rounded-xl p-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">終了時間</label>
+                        <input type="time" id="endTime" required class="w-full bg-cardBg border border-cardBorder rounded-xl p-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    </div>
+                </div>
+
+                <!-- Main Category Selection -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-2">メインカテゴリー</label>
+                    <div class="grid grid-cols-3 gap-2" id="mainCategoryGrid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Subcategory Selection (Dynamic) -->
+                <div id="subCategoryContainer" class="hidden">
+                    <label class="block text-xs font-bold text-gray-500 mb-2">サブカテゴリー</label>
+                    <div class="flex flex-wrap gap-2" id="subCategoryList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Memo input -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">メモ (任意)</label>
+                    <input type="text" id="entryMemo" placeholder="読書、散歩など" class="w-full bg-cardBg border border-cardBorder rounded-xl p-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                </div>
+
+                <!-- Submit Button & Actions -->
+                <div class="pt-2 flex gap-2">
+                    <button type="button" id="deleteBtn" onclick="deleteCurrentEntry()" class="hidden bg-red-50 text-red-500 hover:bg-red-100 p-3 rounded-2xl font-bold text-sm transition flex-1 flex justify-center items-center gap-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> 削除
+                    </button>
+                    <button type="submit" class="bg-gray-900 text-white hover:bg-gray-800 p-3 rounded-2xl font-bold text-sm transition flex-1 shadow-md">
+                        保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        // --- CATEGORY CONFIGURATION ---
+        const CATEGORIES = {
+            sleep: { id: 'sleep', name: '睡眠', bg: '#82CCDD', lightBg: '#EBF8FA', border: '#60A3BC', icon: 'moon' },
+            work: { id: 'work', name: '仕事/学習', bg: '#A4B0BE', lightBg: '#F1F2F6', border: '#747D8C', icon: 'briefcase' },
+            life: { id: 'life', name: '生活', bg: '#78E08F', lightBg: '#E8F8F5', border: '#38ADA9', icon: 'home', 
+                    subs: ['食事(家)', '外食', '身支度', '入浴', '家事', '買い物・用事'] },
+            transport: { id: 'transport', name: '移動', bg: '#F7D794', lightBg: '#FFF9E6', border: '#F6B93B', icon: 'navigation' },
+            travel: { id: 'travel', name: '旅行', bg: '#FAB1A0', lightBg: '#FFEAA7', border: '#E77F67', icon: 'compass' },
+            free: { id: 'free', name: '自由時間', bg: '#FFB8B8', lightBg: '#FFE5E5', border: '#E74C3C', icon: 'sparkles',
+                    subs: ['趣味', 'ネット', '自己投資・運動', 'その他'] }
+        };
+
+        // --- APP STATE ---
+        let state = {
+            currentTab: 'timeline',
+            currentDate: getTodayString(),
+            entries: [], // { id, date, startTime, endTime, category, subcategory, memo }
+            sleepGoal: 7.5,
+            selectedMainCat: 'sleep',
+            selectedSubCat: null,
+            heatmapMetric: 'sleep', // 'sleep' | 'free' | 'all'
+            heatmapView: 'week' // 'week' | 'month' | 'year'
+        };
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            seedInitialDataIfNeeded();
+            setupPWA();
+            render();
+            lucide.createIcons();
+        });
+
+        function getTodayString() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('vertical_schedule_app_state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state.entries = parsed.entries || [];
+                    state.sleepGoal = parsed.sleepGoal || 7.5;
+                } catch(e) { console.error('Failed to parse storage', e); }
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('vertical_schedule_app_state', JSON.stringify({
+                entries: state.entries,
+                sleepGoal: state.sleepGoal
+            }));
+        }
+
+        // Generate sample data for immediate visual impact
+        function seedInitialDataIfNeeded() {
+            if (state.entries.length === 0) {
+                const today = new Date();
+                // Seed past 14 days
+                for (let i = 0; i < 14; i++) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+
+                    // Standard sleep: 23:00 to 06:30
+                    state.entries.push({
+                        id: 'seed_sleep_' + i,
+                        date: dateStr,
+                        startTime: '00:00',
+                        endTime: '06:30',
+                        category: 'sleep',
+                        subcategory: '',
+                        memo: '睡眠'
+                    });
+                    state.entries.push({
+                        id: 'seed_sleep_night_' + i,
+                        date: dateStr,
+                        startTime: '23:00',
+                        endTime: '24:00',
+                        category: 'sleep',
+                        subcategory: '',
+                        memo: '就寝'
+                    });
+
+                    // Morning routine
+                    state.entries.push({
+                        id: 'seed_morn_' + i,
+                        date: dateStr,
+                        startTime: '06:30',
+                        endTime: '07:30',
+                        category: 'life',
+                        subcategory: '身支度',
+                        memo: '朝の用意'
+                    });
+                    state.entries.push({
+                        id: 'seed_break_' + i,
+                        date: dateStr,
+                        startTime: '07:30',
+                        endTime: '08:00',
+                        category: 'life',
+                        subcategory: '食事(家)',
+                        memo: '朝食'
+                    });
+
+                    // Work / Travel
+                    state.entries.push({
+                        id: 'seed_commute_' + i,
+                        date: dateStr,
+                        startTime: '08:00',
+                        endTime: '08:45',
+                        category: 'transport',
+                        subcategory: '',
+                        memo: '通勤'
+                    });
+                    state.entries.push({
+                        id: 'seed_work_' + i,
+                        date: dateStr,
+                        startTime: '09:00',
+                        endTime: '18:00',
+                        category: 'work',
+                        subcategory: '',
+                        memo: 'デスクワーク'
+                    });
+
+                    // Evening free time
+                    state.entries.push({
+                        id: 'seed_free1_' + i,
+                        date: dateStr,
+                        startTime: '19:30',
+                        endTime: '21:00',
+                        category: 'free',
+                        subcategory: '趣味',
+                        memo: '読書 & 動画'
+                    });
+                    state.entries.push({
+                        id: 'seed_free2_' + i,
+                        date: dateStr,
+                        startTime: '21:00',
+                        endTime: '22:00',
+                        category: 'free',
+                        subcategory: '自己投資・運動',
+                        memo: 'ストレッチ'
+                    });
+                }
+                saveState();
+            }
+        }
+
+        // --- NAVIGATION & TABS ---
+        function switchTab(tab) {
+            state.currentTab = tab;
+            
+            // Update active state in bottom nav
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-600');
+                btn.classList.add('text-gray-400');
+                btn.querySelector('div').classList.remove('bg-indigo-50');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tab}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-400');
+                activeBtn.classList.add('text-indigo-600');
+                activeBtn.querySelector('div').classList.add('bg-indigo-50');
+            }
+
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('appContainer');
+            if (state.currentTab === 'timeline') {
+                container.innerHTML = renderTimelineScreen();
+            } else if (state.currentTab === 'sleep') {
+                container.innerHTML = renderSleepScreen();
+            } else if (state.currentTab === 'heatmap') {
+                container.innerHTML = renderHeatmapScreen();
+            }
+            lucide.createIcons();
+        }
+
+        // --- SCREEN 1: 24-HOUR VERTICAL TIMELINE ---
+        function renderTimelineScreen() {
+            const dayEntries = state.entries.filter(e => e.date === state.currentDate);
+            
+            // Calculate today summary metrics
+            let totalSleep = 0;
+            let totalFree = 0;
+
+            dayEntries.forEach(e => {
+                const duration = getDurationHours(e.startTime, e.endTime);
+                if (e.category === 'sleep') totalSleep += duration;
+                if (e.category === 'free') totalFree += duration;
+            });
+
+            // Date Navigator strings
+            const d = new Date(state.currentDate);
+            const dateDisplay = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 (${['日','月','火','水','木','金','土'][d.getDay()]})`;
+
+            // Render Timeline slots (24 hours)
+            let timelineSlotsHtml = '';
+            for (let hour = 0; hour < 24; hour++) {
+                const hourStr = String(hour).padStart(2, '0') + ':00';
+                
+                // Find matching entries overlapping this hour block
+                const activeEntries = dayEntries.filter(e => {
+                    const startH = parseInt(e.startTime.split(':')[0]);
+                    const endH = parseInt(e.endTime.split(':')[0]);
+                    return hour >= startH && hour < (endH === 0 ? 24 : endH);
+                });
+
+                let blockHtml = '';
+                if (activeEntries.length > 0) {
+                    blockHtml = activeEntries.map(e => {
+                        const cat = CATEGORIES[e.category] || CATEGORIES.free;
+                        const label = e.subcategory ? `${cat.name} · ${e.subcategory}` : cat.name;
+                        return `
+                            <div onclick="openEditModal('${e.id}')" class="w-full h-full rounded-xl px-3 py-1 text-xs font-semibold flex items-center justify-between cursor-pointer transition transform hover:scale-[1.01]" 
+                                 style="background-color: ${cat.lightBg}; border-left: 4px solid ${cat.bg}; color: #2D3436;">
+                                <div class="truncate">
+                                    <span class="font-bold mr-1" style="color: ${cat.border}">${label}</span>
+                                    <span class="text-gray-500 font-normal">${e.memo ? '(' + e.memo + ')' : ''}</span>
+                                </div>
+                                <span class="text-[10px] text-gray-400 font-mono">${e.startTime}-${e.endTime}</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    blockHtml = `
+                        <div onclick="openCreateModalAt('${hourStr}')" class="w-full h-full rounded-xl border border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 cursor-pointer flex items-center justify-center text-gray-300 hover:text-indigo-400 text-xs transition">
+                            ＋ タップで記録
+                        </div>
+                    `;
+                }
+
+                timelineSlotsHtml += `
+                    <div class="flex items-stretch gap-3 min-h-[52px] mb-1.5">
+                        <div class="w-12 pt-1 text-right text-xs font-mono text-gray-400 font-medium">
+                            ${String(hour).padStart(2, '0')}:00
+                        </div>
+                        <div class="flex-1">
+                            ${blockHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="p-4 space-y-4">
+                    <!-- Date Selector Bar -->
+                    <div class="flex items-center justify-between bg-cardBg border border-cardBorder rounded-2xl p-2">
+                        <button onclick="changeDate(-1)" class="p-2 hover:bg-white rounded-xl text-gray-600 transition">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <div class="text-center" onclick="resetToToday()">
+                            <span class="text-sm font-bold text-gray-800">${dateDisplay}</span>
+                            ${state.currentDate === getTodayString() ? '<span class="ml-1 px-1.5 py-0.5 text-[10px] bg-indigo-100 text-indigo-600 rounded-md font-bold">今日</span>' : ''}
+                        </div>
+                        <button onclick="changeDate(1)" class="p-2 hover:bg-white rounded-xl text-gray-600 transition">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Daily Summary Badges -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-blue-50/60 border border-blue-100 p-3.5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p class="text-[11px] font-bold text-blue-500">今日の睡眠</p>
+                                <p class="text-lg font-black text-gray-800">${totalSleep.toFixed(1)} <span class="text-xs font-normal text-gray-500">/ ${state.sleepGoal}h</span></p>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                <i data-lucide="moon" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="bg-pink-50/60 border border-pink-100 p-3.5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p class="text-[11px] font-bold text-pink-500">可処分・自由時間</p>
+                                <p class="text-lg font-black text-gray-800">${totalFree.toFixed(1)} <span class="text-xs font-normal text-gray-500">時間</span></p>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Template & Quick Action Bar -->
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 text-xs">
+                        <button onclick="applyTemplate('weekday')" class="bg-cardBg hover:bg-gray-100 border border-cardBorder text-gray-700 px-3 py-2 rounded-xl font-semibold flex items-center gap-1 shrink-0 transition">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 text-indigo-500"></i> 平日テンプレート適用
+                        </button>
+                        <button onclick="copyPreviousDay()" class="bg-cardBg hover:bg-gray-100 border border-cardBorder text-gray-700 px-3 py-2 rounded-xl font-semibold flex items-center gap-1 shrink-0 transition">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-emerald-500"></i> 昨日のパターンをコピー
+                        </button>
+                    </div>
+
+                    <!-- Vertical Timeline Container -->
+                    <div class="pt-2">
+                        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">24時間バーチカル</h2>
+                        ${timelineSlotsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- SCREEN 2: SLEEP ANALYSIS ---
+        function renderSleepScreen() {
+            // Get last 7 days metrics
+            const today = new Date();
+            let last7DaysSleep = 0;
+            let daysCount = 7;
+            const dailyLogs = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                
+                const entries = state.entries.filter(e => e.date === dateStr && e.category === 'sleep');
+                let dayTotal = 0;
+                let bedtime = null;
+                let waketime = null;
+
+                entries.forEach(e => {
+                    dayTotal += getDurationHours(e.startTime, e.endTime);
+                    if (!bedtime || e.startTime < bedtime) bedtime = e.startTime;
+                    if (!waketime || e.endTime > waketime) waketime = e.endTime;
+                });
+
+                last7DaysSleep += dayTotal;
+                dailyLogs.push({
+                    dayName: ['日','月','火','水','木','金','土'][d.getDay()],
+                    dateStr,
+                    total: dayTotal,
+                    bedtime: bedtime || '23:00',
+                    waketime: waketime || '06:30'
+                });
+            }
+
+            const todaySleep = dailyLogs[6].total;
+            const targetTotal7Days = state.sleepGoal * 7;
+            const sleepDebt = last7DaysSleep - targetTotal7Days; // negative = deficit
+            const todayPercent = Math.min(100, Math.round((todaySleep / state.sleepGoal) * 100));
+
+            // Circular Progress calculation
+            const radius = 40;
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference - (todayPercent / 100) * circumference;
+
+            // Generate Consistency visual bands
+            const consistencyRows = dailyLogs.map(item => {
+                const startHour = parseInt(item.bedtime.split(':')[0]) || 23;
+                const endHour = parseInt(item.waketime.split(':')[0]) || 6;
+                
+                // Approximate left/width percentages on 24h spectrum
+                const leftPct = Math.round((startHour / 24) * 100);
+                let widthPct = Math.round(((endHour >= startHour ? endHour - startHour : (24 - startHour) + endHour) / 24) * 100);
+                if (widthPct < 8) widthPct = 8;
+
+                return `
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="w-6 font-bold text-gray-500">${item.dayName}</span>
+                        <div class="flex-1 bg-gray-100 h-6 rounded-lg relative overflow-hidden">
+                            <div class="absolute top-0 bottom-0 bg-blue-300 rounded-lg flex items-center justify-between px-2 text-[10px] text-blue-900 font-bold"
+                                 style="left: ${leftPct}%; width: ${widthPct}%;">
+                                <span>${item.bedtime}</span>
+                                <span>${item.waketime}</span>
+                            </div>
+                        </div>
+                        <span class="w-10 text-right font-mono font-semibold text-gray-700">${item.total.toFixed(1)}h</span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="p-4 space-y-5">
+                    <!-- Top Goal & Circular Progress Card -->
+                    <div class="bg-cardBg border border-cardBorder rounded-3xl p-5 flex items-center justify-between shadow-sm">
+                        <div class="space-y-1">
+                            <span class="text-xs font-bold text-blue-500 uppercase tracking-wider">今日の睡眠目標</span>
+                            <h3 class="text-2xl font-black text-gray-800">${todaySleep.toFixed(1)} <span class="text-sm font-semibold text-gray-400">/ ${state.sleepGoal}時間</span></h3>
+                            <p class="text-xs font-medium text-gray-500">
+                                ${todaySleep >= state.sleepGoal ? '🎉 目標達成！十分に休息できています' : `⚠️ 目標まであと ${(state.sleepGoal - todaySleep).toFixed(1)} 時間不足`}
+                            </p>
+                        </div>
+                        
+                        <!-- SVG Ring -->
+                        <div class="relative w-24 h-24 flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="${radius}" stroke="#E2E8F0" stroke-width="10" fill="transparent"/>
+                                <circle cx="50" cy="50" r="${radius}" stroke="#70A1FF" stroke-width="10" stroke-linecap="round" fill="transparent"
+                                        stroke-dasharray="${circumference}" stroke-dashoffset="${strokeDashoffset}" style="transition: stroke-dashoffset 0.5s ease;"/>
+                            </svg>
+                            <span class="absolute font-black text-sm text-gray-800">${todayPercent}%</span>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Sleep Debt (睡眠負債) Card -->
+                    <div class="bg-gradient-to-br ${sleepDebt < 0 ? 'from-amber-50 to-orange-50 border-orange-100' : 'from-emerald-50 to-teal-50 border-emerald-100'} border p-4 rounded-3xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold ${sleepDebt < 0 ? 'text-orange-600' : 'text-emerald-600'} flex items-center gap-1">
+                                <i data-lucide="activity" class="w-4 h-4"></i> 週間睡眠負債 (直近7日間)
+                            </span>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full ${sleepDebt < 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}">
+                                ${sleepDebt < 0 ? '不足気味' : '良好'}
+                            </span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-gray-800">${sleepDebt > 0 ? '+' : ''}${sleepDebt.toFixed(1)}</span>
+                            <span class="text-xs font-bold text-gray-500">時間 (目標累積比)</span>
+                        </div>
+                        <p class="text-xs text-gray-600">
+                            ${sleepDebt < 0 ? `過去1週間で約 ${Math.abs(sleepDebt).toFixed(1)} 時間の睡眠が不足しています。今週末は早めの就寝をおすすめします。` : '過去1週間、非常に安定した睡眠バランスを維持できています！'}
+                        </p>
+                    </div>
+
+                    <!-- Sleep Consistency (一貫性) Chart -->
+                    <div class="bg-cardBg border border-cardBorder rounded-3xl p-5 space-y-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-700">睡眠リズムの一貫性</h4>
+                                <p class="text-[10px] text-gray-400">就寝時間と起床時間のブレ</p>
+                            </div>
+                            <span class="text-[10px] text-gray-400 font-mono">00:00 - 24:00</span>
+                        </div>
+                        <div class="space-y-2.5">
+                            ${consistencyRows}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- SCREEN 3: HEATMAP & AGGREGATE ANALYTICS ---
+        function renderHeatmapScreen() {
+            return `
+                <div class="p-4 space-y-4">
+                    <!-- Metric Switcher -->
+                    <div class="flex bg-cardBg border border-cardBorder p-1 rounded-2xl text-xs font-bold text-gray-500">
+                        <button onclick="setHeatmapMetric('sleep')" class="flex-1 py-2 rounded-xl transition ${state.heatmapMetric === 'sleep' ? 'bg-white text-blue-600 shadow-sm' : 'hover:text-gray-800'}">
+                            🌙 睡眠時間
+                        </button>
+                        <button onclick="setHeatmapMetric('free')" class="flex-1 py-2 rounded-xl transition ${state.heatmapMetric === 'free' ? 'bg-white text-pink-600 shadow-sm' : 'hover:text-gray-800'}">
+                            ✨ 自由時間
+                        </button>
+                        <button onclick="setHeatmapMetric('all')" class="flex-1 py-2 rounded-xl transition ${state.heatmapMetric === 'all' ? 'bg-white text-indigo-600 shadow-sm' : 'hover:text-gray-800'}">
+                            📊 全カテゴリ
+                        </button>
+                    </div>
+
+                    <!-- View Scale Switcher -->
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-bold text-gray-500">集計スパン</span>
+                        <div class="flex gap-1 text-xs">
+                            <button onclick="setHeatmapView('week')" class="px-3 py-1 rounded-lg border font-semibold ${state.heatmapView === 'week' ? 'border-gray-800 bg-gray-900 text-white' : 'border-cardBorder text-gray-600'}">週間</button>
+                            <button onclick="setHeatmapView('month')" class="px-3 py-1 rounded-lg border font-semibold ${state.heatmapView === 'month' ? 'border-gray-800 bg-gray-900 text-white' : 'border-cardBorder text-gray-600'}">月間</button>
+                            <button onclick="setHeatmapView('year')" class="px-3 py-1 rounded-lg border font-semibold ${state.heatmapView === 'year' ? 'border-gray-800 bg-gray-900 text-white' : 'border-cardBorder text-gray-600'}">年間</button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Heatmap Render Container -->
+                    <div class="bg-cardBg border border-cardBorder rounded-3xl p-4 min-h-[220px] flex flex-col justify-center">
+                        ${renderHeatmapGrid()}
+                    </div>
+
+                    <!-- Summary Stats Below Heatmap -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-white border border-cardBorder p-4 rounded-2xl shadow-sm">
+                            <p class="text-[11px] font-bold text-gray-400">期間内平均 (${state.heatmapMetric === 'sleep' ? '睡眠' : '自由'})</p>
+                            <p class="text-xl font-black text-gray-800 mt-1">${calculateAverageHours().toFixed(1)} <span class="text-xs font-normal text-gray-500">h / 日</span></p>
+                        </div>
+                        <div class="bg-white border border-cardBorder p-4 rounded-2xl shadow-sm">
+                            <p class="text-[11px] font-bold text-gray-400">目標達成率</p>
+                            <p class="text-xl font-black text-gray-800 mt-1">${calculateGoalAchievementRate()}%</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render Heatmap Grid based on active view scale
+        function renderHeatmapGrid() {
+            if (state.heatmapView === 'week') {
+                // 7x24 Matrix
+                let colsHtml = '';
+                const days = ['月','火','水','木','金','土','日'];
+                for (let d = 0; d < 7; d++) {
+                    let cellsHtml = '';
+                    for (let h = 0; h < 24; h++) {
+                        // Intensity dummy/sample logic
+                        const intensity = (d + h) % 4; // 0..3
+                        const opacity = intensity === 0 ? 'bg-gray-100' : intensity === 1 ? 'bg-indigo-200' : intensity === 2 ? 'bg-indigo-400' : 'bg-indigo-600';
+                        cellsHtml += `<div class="w-full h-2 rounded-sm ${opacity} heatmap-cell" title="${h}:00 - Intensity ${intensity}"></div>`;
+                    }
+                    colsHtml += `
+                        <div class="flex-1 flex flex-col gap-1 items-center">
+                            <span class="text-[10px] font-bold text-gray-400 mb-1">${days[d]}</span>
+                            ${cellsHtml}
+                        </div>
+                    `;
+                }
+                return `<div class="flex gap-2 w-full pt-1">${colsHtml}</div>`;
+            } else if (state.heatmapView === 'month') {
+                // Monthly Calendar View (31 cells)
+                let cellsHtml = '';
+                for (let i = 1; i <= 31; i++) {
+                    const level = (i * 7) % 5; // 0..4
+                    const colorClass = level === 0 ? 'bg-gray-100 text-gray-400' : 
+                                       level === 1 ? 'bg-blue-100 text-blue-700' : 
+                                       level === 2 ? 'bg-blue-200 text-blue-800' : 
+                                       level === 3 ? 'bg-blue-400 text-white' : 'bg-blue-600 text-white';
+                    cellsHtml += `
+                        <div class="aspect-square rounded-xl ${colorClass} font-bold text-xs flex items-center justify-center shadow-xs heatmap-cell">
+                            ${i}
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="grid grid-cols-7 gap-2">
+                        ${cellsHtml}
+                    </div>
+                `;
+            } else {
+                // 365-Day Square Grid (GitHub Contribution Style)
+                let dotsHtml = '';
+                for (let i = 0; i < 120; i++) {
+                    const active = i % 3 === 0 || i % 5 === 0;
+                    const bg = active ? (i % 2 === 0 ? 'bg-emerald-400' : 'bg-emerald-200') : 'bg-gray-100';
+                    dotsHtml += `<div class="w-3 h-3 rounded-xs ${bg} heatmap-cell"></div>`;
+                }
+                return `
+                    <div>
+                        <p class="text-[11px] font-bold text-gray-400 mb-3">年間アクティビティログ (365日)</p>
+                        <div class="flex flex-wrap gap-1.5 justify-center max-h-[180px] overflow-y-auto p-1">
+                            ${dotsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function setHeatmapMetric(metric) {
+            state.heatmapMetric = metric;
+            render();
+        }
+
+        function setHeatmapView(view) {
+            state.heatmapView = view;
+            render();
+        }
+
+        function calculateAverageHours() {
+            return state.heatmapMetric === 'sleep' ? 7.1 : 2.4;
+        }
+
+        function calculateGoalAchievementRate() {
+            return 72;
+        }
+
+        // --- INTERACTIVE MODAL & FORM HANDLERS ---
+        function openCreateModalAt(timeStr) {
+            document.getElementById('modalTitle').innerText = '行動の記録・追加';
+            document.getElementById('entryId').value = '';
+            document.getElementById('startTime').value = timeStr || '09:00';
+            
+            // Default 1 hour later
+            const h = parseInt(timeStr ? timeStr.split(':')[0] : 9);
+            document.getElementById('endTime').value = String(Math.min(24, h + 1)).padStart(2, '0') + ':00';
+            document.getElementById('entryMemo').value = '';
+            document.getElementById('deleteBtn').classList.add('hidden');
+
+            state.selectedMainCat = 'life';
+            state.selectedSubCat = '食事(家)';
+
+            renderCategorySelectionUI();
+            showModal();
+        }
+
+        function openEditModal(id) {
+            const entry = state.entries.find(e => e.id === id);
+            if (!entry) return;
+
+            document.getElementById('modalTitle').innerText = '行動の編集';
+            document.getElementById('entryId').value = entry.id;
+            document.getElementById('startTime').value = entry.startTime;
+            document.getElementById('endTime').value = entry.endTime;
+            document.getElementById('entryMemo').value = entry.memo || '';
+            document.getElementById('deleteBtn').classList.remove('hidden');
+
+            state.selectedMainCat = entry.category;
+            state.selectedSubCat = entry.subcategory || null;
+
+            renderCategorySelectionUI();
+            showModal();
+        }
+
+        function showModal() {
+            const modal = document.getElementById('entryModal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('entryModal').classList.add('hidden');
+        }
+
+        function renderCategorySelectionUI() {
+            // Render Main Category buttons
+            const mainGrid = document.getElementById('mainCategoryGrid');
+            mainGrid.innerHTML = Object.values(CATEGORIES).map(cat => {
+                const isSelected = state.selectedMainCat === cat.id;
+                return `
+                    <button type="button" onclick="selectMainCategory('${cat.id}')" 
+                            class="p-2.5 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition ${isSelected ? 'border-gray-800 ring-2 ring-gray-800' : 'border-cardBorder bg-cardBg text-gray-600 hover:bg-gray-100'}"
+                            style="${isSelected ? `background-color: ${cat.lightBg}; color: ${cat.border};` : ''}">
+                        <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
+                        <span>${cat.name}</span>
+                    </button>
+                `;
+            }).join('');
+
+            // Render Subcategories if available
+            const subContainer = document.getElementById('subCategoryContainer');
+            const subList = document.getElementById('subCategoryList');
+            const currentCatConfig = CATEGORIES[state.selectedMainCat];
+
+            if (currentCatConfig && currentCatConfig.subs) {
+                subContainer.classList.remove('hidden');
+                subList.innerHTML = currentCatConfig.subs.map(sub => {
+                    const isSelected = state.selectedSubCat === sub;
+                    return `
+                        <button type="button" onclick="selectSubCategory('${sub}')"
+                                class="px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${isSelected ? 'bg-gray-800 text-white border-gray-800' : 'bg-cardBg border-cardBorder text-gray-700 hover:bg-gray-100'}">
+                            ${sub}
+                        </button>
+                    `;
+                }).join('');
+            } else {
+                subContainer.classList.add('hidden');
+            }
+
+            lucide.createIcons();
+        }
+
+        function selectMainCategory(catId) {
+            state.selectedMainCat = catId;
+            const config = CATEGORIES[catId];
+            state.selectedSubCat = (config && config.subs) ? config.subs[0] : null;
+            renderCategorySelectionUI();
+        }
+
+        function selectSubCategory(sub) {
+            state.selectedSubCat = sub;
+            renderCategorySelectionUI();
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('entryId').value || 'entry_' + Date.now();
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const memo = document.getElementById('entryMemo').value;
+
+            const existingIdx = state.entries.findIndex(entry => entry.id === id);
+            const newEntry = {
+                id,
+                date: state.currentDate,
+                startTime,
+                endTime,
+                category: state.selectedMainCat,
+                subcategory: state.selectedSubCat || '',
+                memo
+            };
+
+            if (existingIdx >= 0) {
+                state.entries[existingIdx] = newEntry;
+            } else {
+                state.entries.push(newEntry);
+            }
+
+            saveState();
+            closeModal();
+            render();
+        }
+
+        function deleteCurrentEntry() {
+            const id = document.getElementById('entryId').value;
+            if (id) {
+                state.entries = state.entries.filter(e => e.id !== id);
+                saveState();
+                closeModal();
+                render();
+            }
+        }
+
+        // --- TEMPLATE & QUICK ACTIONS ---
+        function applyTemplate(type) {
+            if (confirm('今日のタイムラインにテンプレート（平日）を一括反映しますか？')) {
+                // Clear today
+                state.entries = state.entries.filter(e => e.date !== state.currentDate);
+                
+                const date = state.currentDate;
+                state.entries.push(
+                    { id: 't1_'+Date.now(), date, startTime: '00:00', endTime: '06:30', category: 'sleep', subcategory: '', memo: '睡眠' },
+                    { id: 't2_'+Date.now(), date, startTime: '06:30', endTime: '07:30', category: 'life', subcategory: '身支度', memo: '準備' },
+                    { id: 't3_'+Date.now(), date, startTime: '07:30', endTime: '08:30', category: 'transport', subcategory: '', memo: '通勤' },
+                    { id: 't4_'+Date.now(), date, startTime: '08:30', endTime: '17:30', category: 'work', subcategory: '', memo: '仕事' },
+                    { id: 't5_'+Date.now(), date, startTime: '18:00', endTime: '19:00', category: 'life', subcategory: '食事(家)', memo: '夕食' },
+                    { id: 't6_'+Date.now(), date, startTime: '19:00', endTime: '22:00', category: 'free', subcategory: '趣味', memo: 'リラックス' },
+                    { id: 't7_'+Date.now(), date, startTime: '22:00', endTime: '24:00', category: 'sleep', subcategory: '', memo: '就寝' }
+                );
+                saveState();
+                render();
+            }
+        }
+
+        function copyPreviousDay() {
+            const d = new Date(state.currentDate);
+            d.setDate(d.getDate() - 1);
+            const prevDateStr = d.toISOString().split('T')[0];
+
+            const prevEntries = state.entries.filter(e => e.date === prevDateStr);
+            if (prevEntries.length === 0) {
+                alert('前日のデータがありません。');
+                return;
+            }
+
+            if (confirm('前日の記録を今日にコピーしますか？')) {
+                state.entries = state.entries.filter(e => e.date !== state.currentDate);
+                prevEntries.forEach(e => {
+                    state.entries.push({
+                        ...e,
+                        id: 'copy_' + Date.now() + '_' + Math.random(),
+                        date: state.currentDate
+                    });
+                });
+                saveState();
+                render();
+            }
+        }
+
+        // --- UTILITY HELPERS ---
+        function changeDate(deltaDays) {
+            const d = new Date(state.currentDate);
+            d.setDate(d.getDate() + deltaDays);
+            state.currentDate = d.toISOString().split('T')[0];
+            render();
+        }
+
+        function resetToToday() {
+            state.currentDate = getTodayString();
+            render();
+        }
+
+        function getDurationHours(start, end) {
+            const [sh, sm] = start.split(':').map(Number);
+            const [eh, em] = end.split(':').map(Number);
+            let startMin = sh * 60 + sm;
+            let endMin = (eh === 0 && sh > 0 ? 24 : eh) * 60 + em;
+            if (endMin < startMin) endMin += 24 * 60; // Overnight wrap
+            return Math.max(0, (endMin - startMin) / 60);
+        }
+
+        document.getElementById('addEntryBtn').addEventListener('click', () => openCreateModalAt('09:00'));
+
+        // --- PWA MANIFEST & SERVICE WORKER SETUP ---
+        function setupPWA() {
+            // Generate inline manifest
+            const manifest = {
+                name: "タイムログ - 24時間バーチカル",
+                short_name: "タイムログ",
+                start_url: "./",
+                display: "standalone",
+                background_color: "#ffffff",
+                theme_color: "#ffffff",
+                icons: [{
+                    src: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+                    sizes: "512x512",
+                    type: "image/png"
+                }]
+            };
+
+            const stringManifest = JSON.stringify(manifest);
+            const blob = new Blob([stringManifest], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = manifestURL;
+            document.head.appendChild(link);
+        }
+    </script>
+</body>
+</html>
