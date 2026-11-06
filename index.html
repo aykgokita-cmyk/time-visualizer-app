@@ -1,0 +1,2985 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="タイムビジュライザー">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="24時間バーチカルスケジュールで行動を可視化し、睡眠不足解消と自由時間捻出をサポートするPWAアプリ">
+  <title>タイムビジュライザー (Time Visualizer)</title>
+
+  <!-- PWA Manifest Data URI -->
+  <link rel="manifest" href='data:application/manifest+json;utf-8,%7B%22name%22%3A%22%E3%82%BF%E3%82%A4%E3%83%A0%E3%83%93%E3%82%B8%E3%83%A5%E3%83%A9%E3%82%A4%E3%82%B6%E3%83%BC%20(Time%20Visualizer)%22%2C%22short_name%22%3A%22%E6%99%82%E9%96%93%E5%8F%AF%E8%A6%96%E5%8C%96%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%23ffffff%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2724%27%20fill%3D%27%233b82f6%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2750%27%20r%3D%2732%27%20fill%3D%27%23ffffff%27%2F%3E%3Cpath%20d%3D%27M50%2028v22l14%2014%27%20stroke%3D%27%233b82f6%27%20stroke-width%3D%276%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D'>
+  
+  <!-- Favicon & Apple Touch Icon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%233b82f6'/><circle cx='50' cy='50' r='32' fill='%23ffffff'/><path d='M50 28v22l14 14' stroke='%233b82f6' stroke-width='6' stroke-linecap='round'/></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%233b82f6'/><circle cx='50' cy='50' r='32' fill='%23ffffff'/><path d='M50 28v22l14 14' stroke='%233b82f6' stroke-width='6' stroke-linecap='round'/></svg>">
+
+  <style>
+    /* CSS Reset & Variables */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --border-light: #f1f5f9;
+
+      /* Pastel Palette defined in spec */
+      --color-sleep-bg: #dbeafe;
+      --color-sleep-text: #1e40af;
+      --color-sleep-border: #bfdbfe;
+      --color-sleep-accent: #3b82f6;
+
+      --color-work-bg: #f3f4f6;
+      --color-work-text: #374151;
+      --color-work-border: #e5e7eb;
+      --color-work-accent: #6b7280;
+
+      --color-life-bg: #dcfce7;
+      --color-life-text: #166534;
+      --color-life-border: #bbf7d0;
+      --color-life-accent: #22c55e;
+
+      --color-transport-bg: #fef9c3;
+      --color-transport-text: #854d0e;
+      --color-transport-border: #fef08a;
+      --color-transport-accent: #eab308;
+
+      --color-travel-bg: #ffedd5;
+      --color-travel-text: #9a3412;
+      --color-travel-border: #fed7aa;
+      --color-travel-accent: #f97316;
+
+      --color-free-bg: #fce7f3;
+      --color-free-text: #9d174d;
+      --color-free-border: #fbcfe8;
+      --color-free-accent: #ec4899;
+
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+
+      --hour-height: 52px; /* 1 hour height in timeline */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "BIZ UDPGothic", Meiryo, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app-container {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 0 35px rgba(0,0,0,0.06);
+    }
+
+    /* Top App Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-light);
+      padding: 12px 16px 8px;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .brand-title h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #eff6ff;
+      color: #3b82f6;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      border: 1px solid #dbeafe;
+    }
+
+    /* Screen Views */
+    .screen-view {
+      display: none;
+      flex: 1;
+      padding-bottom: 90px; /* space for bottom nav */
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen-view.active {
+      display: block;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      z-index: 50;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .nav-item.active {
+      color: #2563eb;
+    }
+
+    .nav-item.active svg {
+      transform: translateY(-2px);
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 2px;
+      width: 16px;
+      height: 3px;
+      background-color: #2563eb;
+      border-radius: var(--radius-full);
+    }
+
+    /* Common Card Styles */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin: 10px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Date Navigation Bar */
+    .date-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .date-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: var(--radius-sm);
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+
+    .date-btn:active {
+      background: #e2e8f0;
+    }
+
+    .current-date-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .current-date-text {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .date-picker-hidden {
+      position: absolute;
+      opacity: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .today-jump-btn {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    /* Summary Metric Pills */
+    .metrics-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 16px 6px;
+    }
+
+    .metric-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .metric-pill.sleep-pill {
+      border-left: 4px solid var(--color-sleep-accent);
+      background: linear-gradient(135deg, #ffffff 60%, #eff6ff 100%);
+    }
+
+    .metric-pill.free-pill {
+      border-left: 4px solid var(--color-free-accent);
+      background: linear-gradient(135deg, #ffffff 60%, #fdf2f8 100%);
+    }
+
+    .metric-info h3 {
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .metric-hours {
+      font-size: 1.25rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+    }
+
+    .metric-unit {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .metric-status-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+      margin-left: 4px;
+    }
+
+    .badge-good {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-warn {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Action Shortcuts Bar */
+    .shortcuts-bar {
+      display: flex;
+      gap: 8px;
+      padding: 6px 16px 10px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .shortcuts-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .shortcut-btn {
+      white-space: nowrap;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s;
+    }
+
+    .shortcut-btn:active {
+      transform: scale(0.97);
+      background: #f8fafc;
+    }
+
+    .shortcut-btn.primary {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* 24h Vertical Timeline */
+    .timeline-container {
+      position: relative;
+      margin: 8px 12px 20px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .timeline-header-hint {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .timeline-scroll-area {
+      position: relative;
+      height: calc(var(--hour-height) * 24);
+      background-size: 100% var(--hour-height);
+    }
+
+    /* Hour row grid */
+    .hour-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: var(--hour-height);
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      pointer-events: none;
+    }
+
+    .hour-row::after {
+      content: "";
+      position: absolute;
+      left: 54px;
+      right: 0;
+      top: 50%;
+      border-top: 1px dashed #f1f5f9;
+    }
+
+    .hour-label {
+      width: 52px;
+      padding-right: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-align: right;
+      transform: translateY(-8px);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline-click-layer {
+      position: absolute;
+      left: 54px;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .timeline-events-layer {
+      position: absolute;
+      left: 56px;
+      right: 8px;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .timeline-event-block {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-radius: 8px;
+      padding: 5px 8px;
+      pointer-events: auto;
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+
+    .timeline-event-block:active {
+      transform: scale(0.985);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .event-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .event-time-range {
+      font-size: 0.68rem;
+      font-weight: 600;
+      opacity: 0.85;
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-sub-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.65);
+      margin-left: 4px;
+      font-weight: 600;
+    }
+
+    /* Current time indicator line */
+    .current-time-line {
+      position: absolute;
+      left: 48px;
+      right: 0;
+      height: 2px;
+      background: #ef4444;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .current-time-line::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: -4px;
+      width: 10px;
+      height: 10px;
+      background: #ef4444;
+      border-radius: 50%;
+    }
+
+    /* Drag / Selection indicator */
+    .timeline-selection-preview {
+      position: absolute;
+      left: 56px;
+      right: 8px;
+      background: rgba(59, 130, 246, 0.18);
+      border: 2px dashed #3b82f6;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    /* Category Specific Styles defined in spec */
+    .cat-sleep {
+      background-color: var(--color-sleep-bg) !important;
+      color: var(--color-sleep-text) !important;
+      border-color: var(--color-sleep-border) !important;
+    }
+    .cat-work {
+      background-color: var(--color-work-bg) !important;
+      color: var(--color-work-text) !important;
+      border-color: var(--color-work-border) !important;
+    }
+    .cat-life {
+      background-color: var(--color-life-bg) !important;
+      color: var(--color-life-text) !important;
+      border-color: var(--color-life-border) !important;
+    }
+    .cat-transport {
+      background-color: var(--color-transport-bg) !important;
+      color: var(--color-transport-text) !important;
+      border-color: var(--color-transport-border) !important;
+    }
+    .cat-travel {
+      background-color: var(--color-travel-bg) !important;
+      color: var(--color-travel-text) !important;
+      border-color: var(--color-travel-border) !important;
+    }
+    .cat-free {
+      background-color: var(--color-free-bg) !important;
+      color: var(--color-free-text) !important;
+      border-color: var(--color-free-border) !important;
+    }
+
+    /* Modal Sheet (Mobile Bottom-Sheet style) */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      border-radius: 22px 22px 0 0;
+      padding: 16px 20px calc(24px + env(safe-area-inset-bottom));
+      box-shadow: var(--shadow-lg);
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: var(--radius-full);
+      margin: 0 auto 12px;
+    }
+
+    .modal-sheet-header h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .modal-close-btn {
+      background: #f1f5f9;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-sub);
+    }
+
+    .time-selector-group {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-main);
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    .time-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .time-field label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .time-field input {
+      font-size: 1.15rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      color: var(--text-main);
+      font-family: inherit;
+    }
+
+    .time-duration-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid #bfdbfe;
+      white-space: nowrap;
+    }
+
+    .category-selection-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quick-hint {
+      font-size: 0.65rem;
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .main-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .cat-select-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 6px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .cat-select-btn .cat-icon {
+      font-size: 1.45rem;
+      margin-bottom: 4px;
+    }
+
+    .cat-select-btn .cat-text {
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .cat-select-btn.selected {
+      transform: scale(1.03);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      outline: 2px solid #0f172a;
+    }
+
+    /* Subcategories Area */
+    .subcat-wrapper {
+      background: #f8fafc;
+      border-radius: var(--radius-md);
+      padding: 12px;
+      border: 1px dashed var(--border-color);
+      margin-bottom: 14px;
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .subcat-wrapper.active {
+      display: block;
+    }
+
+    .subcat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .subcat-pill-btn {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      padding: 7px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .subcat-pill-btn:active, .subcat-pill-btn.selected {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .memo-input {
+      width: 100%;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      font-family: inherit;
+    }
+
+    .modal-actions-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+
+    .modal-btn:active {
+      opacity: 0.85;
+    }
+
+    .btn-save {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #b91c1c;
+      flex: 0 0 70px;
+    }
+
+    /* Screen 2: Sleep Analysis Screen */
+    .analysis-header {
+      padding: 16px 16px 8px;
+    }
+
+    .analysis-header h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .analysis-header p {
+      font-size: 0.76rem;
+      color: var(--text-sub);
+    }
+
+    /* Target Setting Bar */
+    .target-sleep-setting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin: 4px 16px 12px;
+    }
+
+    .target-sleep-setting span {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1e40af;
+    }
+
+    .stepper-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stepper-btn {
+      background: #ffffff;
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .stepper-val {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1e40af;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* Circular Progress Ring Card */
+    .ring-card {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+    }
+
+    .ring-svg-wrap {
+      position: relative;
+      width: 170px;
+      height: 170px;
+      margin: 8px 0;
+    }
+
+    .ring-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .ring-circle-bg {
+      fill: none;
+      stroke: #f1f5f9;
+      stroke-width: 12;
+    }
+
+    .ring-circle-bar {
+      fill: none;
+      stroke: #3b82f6;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .ring-inner-content {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-percent {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .ring-subtext {
+      font-size: 0.72rem;
+      color: var(--text-sub);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Sleep Debt Card */
+    .debt-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin: 12px 16px;
+    }
+
+    .debt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .debt-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .debt-status-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    .debt-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0 8px;
+      text-align: center;
+    }
+
+    .debt-stat-box {
+      background: #ffffff;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .debt-stat-label {
+      font-size: 0.65rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .debt-stat-num {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-top: 2px;
+      color: var(--text-main);
+    }
+
+    .debt-advice {
+      font-size: 0.74rem;
+      color: var(--text-sub);
+      line-height: 1.4;
+      background: #eff6ff;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid #3b82f6;
+      margin-top: 10px;
+    }
+
+    /* Bedtime & Wakeup Consistency Chart */
+    .chart-card {
+      margin: 12px 16px;
+    }
+
+    .chart-card h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .chart-sub-note {
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+    }
+
+    .consistency-chart-container {
+      position: relative;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 8px;
+    }
+
+    .chart-row-day {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+    }
+
+    .chart-day-label {
+      width: 50px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-align: right;
+      padding-right: 8px;
+      font-size: 0.68rem;
+    }
+
+    .chart-bar-track {
+      flex: 1;
+      height: 22px;
+      background: #f1f5f9;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-sleep-bar {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      background: var(--color-sleep-bg);
+      border: 1px solid var(--color-sleep-border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: var(--color-sleep-text);
+      white-space: nowrap;
+    }
+
+    .chart-time-ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-left: 50px;
+      padding-top: 4px;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Screen 3: Heatmap Reports */
+    .report-tabs {
+      display: flex;
+      padding: 12px 16px 4px;
+      gap: 6px;
+    }
+
+    .report-filter-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: var(--radius-full);
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .report-filter-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .report-view-segment {
+      display: flex;
+      margin: 8px 16px 12px;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: var(--radius-md);
+    }
+
+    .report-subview-btn {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .report-subview-btn.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* 1. Weekly Matrix (7 days x 24 hours) */
+    .weekly-matrix-card {
+      padding: 12px 10px;
+      overflow-x: auto;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 28px repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .matrix-header-cell {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-align: center;
+      padding: 3px 0;
+    }
+
+    .matrix-hour-label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: right;
+      padding-right: 4px;
+      line-height: 14px;
+    }
+
+    .matrix-cell {
+      height: 14px;
+      border-radius: 2px;
+      background: #f8fafc;
+      cursor: pointer;
+      border: 0.5px solid #f1f5f9;
+      transition: transform 0.1s;
+    }
+
+    .matrix-cell:hover {
+      transform: scale(1.15);
+      z-index: 5;
+    }
+
+    /* 2. Monthly Heatmap Calendar */
+    .month-calendar-wrap {
+      padding: 12px;
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .month-nav-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+    }
+
+    .month-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+
+    .cal-day-header {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding-bottom: 4px;
+    }
+
+    .cal-day-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .cal-day-num {
+      font-size: 0.65rem;
+      color: var(--text-sub);
+    }
+
+    .cal-day-val {
+      font-size: 0.62rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+
+    /* 3. Yearly Heatmap (GitHub style 365 days) */
+    .yearly-heatmap-wrap {
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .yearly-header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .yearly-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .yearly-legend {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.65rem;
+      color: var(--text-sub);
+    }
+
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .year-grid-scroll {
+      display: flex;
+      gap: 3px;
+      padding-bottom: 8px;
+    }
+
+    .year-col-week {
+      display: grid;
+      grid-template-rows: repeat(7, 10px);
+      gap: 3px;
+    }
+
+    .year-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #f1f5f9;
+      cursor: pointer;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-30px);
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Tooltip / Details Popover */
+    .tooltip-popover {
+      position: fixed;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 150;
+      display: none;
+      box-shadow: var(--shadow-md);
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- Top Fixed Header -->
+  <header class="app-header">
+    <div class="brand-title">
+      <h1>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Time Visualizer
+      </h1>
+      <span class="brand-badge">PWA Ready</span>
+    </div>
+
+    <!-- Date selector & Nav for timeline (dynamically updated) -->
+    <div id="header-timeline-controls">
+      <div class="date-nav-bar">
+        <button class="date-btn" id="prev-date-btn" aria-label="前日">◀</button>
+        <div class="current-date-wrap">
+          <span class="current-date-text" id="display-date-text">2026年10月20日 (火)</span>
+          <input type="date" id="date-picker-input" class="date-picker-hidden">
+        </div>
+        <button class="date-btn" id="next-date-btn" aria-label="翌日">▶</button>
+        <button class="today-jump-btn" id="jump-today-btn">今日</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SCREEN 1: TIMELINE (MAIN) -->
+  <main id="screen-timeline" class="screen-view active">
+    
+    <!-- Daily Summary Cards -->
+    <section class="metrics-summary-grid">
+      <div class="metric-pill sleep-pill">
+        <div class="metric-info">
+          <h3>睡眠サマリー</h3>
+          <div class="metric-value-row">
+            <span class="metric-hours" id="today-sleep-hours">0.0</span>
+            <span class="metric-unit">時間</span>
+            <span class="metric-status-badge badge-good" id="today-sleep-badge">適正</span>
+          </div>
+        </div>
+        <div style="font-size: 1.5rem;">🌙</div>
+      </div>
+
+      <div class="metric-pill free-pill">
+        <div class="metric-info">
+          <h3>自由時間サマリー</h3>
+          <div class="metric-value-row">
+            <span class="metric-hours" id="today-free-hours">0.0</span>
+            <span class="metric-unit">時間</span>
+            <span class="metric-status-badge badge-good" id="today-free-badge">確保</span>
+          </div>
+        </div>
+        <div style="font-size: 1.5rem;">✨</div>
+      </div>
+    </section>
+
+    <!-- Shortcut Templates Bar -->
+    <section class="shortcuts-bar">
+      <button class="shortcut-btn" id="btn-tpl-workday">
+        <span>💼</span> 平日テンプレート適用
+      </button>
+      <button class="shortcut-btn" id="btn-tpl-holiday">
+        <span>🏖️</span> 休日テンプレート適用
+      </button>
+      <button class="shortcut-btn" id="btn-copy-yesterday">
+        <span>🔄</span> 昨日をコピー
+      </button>
+      <button class="shortcut-btn primary" id="btn-add-event-manual">
+        <span>➕</span> 予定を追加
+      </button>
+    </section>
+
+    <!-- 24-hour Vertical Timeline Container -->
+    <section class="timeline-container">
+      <div class="timeline-header-hint">
+        <span>24時間バーチカルタイムライン</span>
+        <span>タップまたはドラッグで登録</span>
+      </div>
+
+      <div class="timeline-scroll-area" id="timeline-scroll-area">
+        <!-- 24 hour grid lines generated dynamically -->
+        <div id="hour-rows-bg"></div>
+
+        <!-- Current time red line indicator -->
+        <div id="current-time-line" class="current-time-line" style="display:none;"></div>
+
+        <!-- Interactive Click & Drag Overlay Layer -->
+        <div class="timeline-click-layer" id="timeline-click-layer"></div>
+
+        <!-- Drag selection visual indicator -->
+        <div class="timeline-selection-preview" id="selection-preview"></div>
+
+        <!-- Event blocks layer -->
+        <div class="timeline-events-layer" id="timeline-events-layer"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SCREEN 2: SLEEP ANALYSIS -->
+  <main id="screen-sleep" class="screen-view">
+    <div class="analysis-header">
+      <h2>🌙 睡眠分析 & 負債トラッカー</h2>
+      <p>目標睡眠時間と体内時計の一貫性を保ち、パフォーマンスを最大化</p>
+    </div>
+
+    <!-- Target Sleep Setting Stepper -->
+    <div class="target-sleep-setting">
+      <span>🎯 目標睡眠時間</span>
+      <div class="stepper-wrap">
+        <button class="stepper-btn" id="btn-target-dec">−</button>
+        <span class="stepper-val" id="target-sleep-val">7.5h</span>
+        <button class="stepper-btn" id="btn-target-inc">＋</button>
+      </div>
+    </div>
+
+    <!-- Ring Progress Card -->
+    <div class="card ring-card">
+      <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">直近の目標達成率</div>
+      <div class="ring-svg-wrap">
+        <svg class="ring-svg" viewBox="0 0 120 120">
+          <circle class="ring-circle-bg" cx="60" cy="60" r="50"></circle>
+          <circle class="ring-circle-bar" id="sleep-ring-progress" cx="60" cy="60" r="50" stroke-dasharray="314.159" stroke-dashoffset="314.159"></circle>
+        </svg>
+        <div class="ring-inner-content">
+          <span class="ring-percent" id="sleep-ring-percent">0%</span>
+          <span class="ring-subtext" id="sleep-ring-detail">0.0h / 7.5h</span>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-sub);" id="sleep-ring-status-msg">
+        目標値に向けてしっかりと休養を取りましょう
+      </div>
+    </div>
+
+    <!-- Sleep Debt (Budget) Card -->
+    <div class="debt-card">
+      <div class="debt-header">
+        <span class="debt-title">
+          <span>📊</span> 直近7日間の睡眠負債（バジェット）
+        </span>
+        <span class="debt-status-tag" id="sleep-debt-badge">良好</span>
+      </div>
+
+      <div class="debt-stat-grid">
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">目標合計 (7日)</div>
+          <div class="debt-stat-num" id="debt-target-total">52.5h</div>
+        </div>
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">実績合計</div>
+          <div class="debt-stat-num" id="debt-actual-total">49.0h</div>
+        </div>
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">睡眠負債</div>
+          <div class="debt-stat-num" id="debt-balance-diff">-3.5h</div>
+        </div>
+      </div>
+
+      <div class="debt-advice" id="sleep-debt-advice">
+        今週は3.5時間の不足が発生しています。今夜または休日に30分〜1時間早めの就寝を意識してください。
+      </div>
+    </div>
+
+    <!-- Sleep Consistency Chart Card -->
+    <div class="card chart-card">
+      <h3>就寝・起床リズムの安定性（直近7日間）</h3>
+      <div class="chart-sub-note">毎日の就寝時刻と起床時刻のブレを可視化（帯の横位置が時間帯）</div>
+      
+      <div class="consistency-chart-container" id="consistency-chart-rows">
+        <!-- Generated by JS -->
+      </div>
+      <div class="chart-time-ticks">
+        <span>0:00</span>
+        <span>4:00</span>
+        <span>8:00</span>
+        <span>12:00</span>
+        <span>16:00</span>
+        <span>20:00</span>
+        <span>24:00</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- SCREEN 3: REPORTS & HEATMAPS -->
+  <main id="screen-reports" class="screen-view">
+    <div class="analysis-header">
+      <h2>📊 集計レポート & ヒートマップ</h2>
+      <p>行動パターンの濃淡から時間の使い方とライフスタイルを分析</p>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="report-tabs">
+      <button class="report-filter-btn active" data-filter="sleep">🌙 睡眠時間</button>
+      <button class="report-filter-btn" data-filter="free">✨ 自由時間</button>
+      <button class="report-filter-btn" data-filter="all">🌈 全体 (行動)</button>
+    </div>
+
+    <!-- Subview Selector: Week / Month / Year -->
+    <div class="report-view-segment">
+      <button class="report-subview-btn active" data-subview="week">週間マトリックス</button>
+      <button class="report-subview-btn" data-subview="month">月間カレンダー</button>
+      <button class="report-subview-btn" data-subview="year">年間ヒートマップ</button>
+    </div>
+
+    <!-- VIEW 1: Weekly Matrix (7 days x 24 hours) -->
+    <div id="subview-week" class="card weekly-matrix-card">
+      <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 8px;" id="matrix-title">
+        直近7日間の24時間タイムマトリックス
+      </div>
+      <div class="matrix-grid" id="weekly-matrix-container">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: Monthly Calendar Heatmap -->
+    <div id="subview-month" class="card month-calendar-wrap" style="display: none;">
+      <div class="month-nav">
+        <button class="date-btn" id="prev-month-btn">◀</button>
+        <span class="month-nav-title" id="display-month-title">2026年10月</span>
+        <button class="date-btn" id="next-month-btn">▶</button>
+      </div>
+      <div class="month-cal-grid" id="month-calendar-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 3: Yearly Heatmap (GitHub style 365 days) -->
+    <div id="subview-year" class="card yearly-heatmap-wrap" style="display: none;">
+      <div class="yearly-header-info">
+        <span class="yearly-title" id="yearly-display-title">直近1年間の達成度</span>
+        <div class="yearly-legend">
+          <span>少</span>
+          <div class="legend-box" style="background:#f1f5f9;"></div>
+          <div class="legend-box" style="background:#bfdbfe;"></div>
+          <div class="legend-box" style="background:#60a5fa;"></div>
+          <div class="legend-box" style="background:#2563eb;"></div>
+          <span>多</span>
+        </div>
+      </div>
+      <div class="year-grid-scroll" id="yearly-heatmap-scroll">
+        <!-- 52 columns x 7 rows rendered by JS -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-screen="screen-timeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      タイムライン
+    </button>
+    <button class="nav-item" data-screen="screen-sleep">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      睡眠分析
+    </button>
+    <button class="nav-item" data-screen="screen-reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      レポート
+    </button>
+  </nav>
+
+  <!-- Event Edit & Create Modal Sheet -->
+  <div class="modal-backdrop" id="event-modal-backdrop">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      
+      <div class="modal-sheet-header">
+        <h2 id="modal-heading">行動を記録</h2>
+        <button class="modal-close-btn" id="modal-close-btn" aria-label="閉じる">✕</button>
+      </div>
+
+      <!-- Time Selector Inputs -->
+      <div class="time-selector-group">
+        <div class="time-field">
+          <label>開始時刻</label>
+          <input type="time" id="modal-start-time" step="900" value="09:00">
+        </div>
+        <div style="font-weight: 700; color: var(--text-muted); text-align: center;">〜</div>
+        <div class="time-field">
+          <label>終了時刻</label>
+          <input type="time" id="modal-end-time" step="900" value="10:00">
+        </div>
+      </div>
+      <div style="text-align: right; margin-top: -10px; margin-bottom: 14px;">
+        <span class="time-duration-badge" id="modal-duration-badge">所要時間: 1.0時間</span>
+      </div>
+
+      <!-- Major Categories Selection -->
+      <div class="category-selection-label">
+        <span>大カテゴリを選択</span>
+        <span class="quick-hint">1タップでスピード登録</span>
+      </div>
+      <div class="main-cat-grid" id="modal-cat-grid">
+        <!-- Category Buttons Rendered via JS -->
+      </div>
+
+      <!-- Subcategory Selection Area (Appears when 生活 or 自由時間 is picked) -->
+      <div class="subcat-wrapper" id="subcat-wrapper">
+        <div class="category-selection-label">
+          <span id="subcat-label">小カテゴリを選択</span>
+          <span class="quick-hint">タップで即時登録</span>
+        </div>
+        <div class="subcat-grid" id="modal-subcat-grid"></div>
+      </div>
+
+      <!-- Memo (Optional) -->
+      <div class="category-selection-label">
+        <span>メモ (任意)</span>
+      </div>
+      <input type="text" id="modal-memo-input" class="memo-input" placeholder="例: カフェで読書、定例会議など">
+
+      <!-- Action Buttons -->
+      <div class="modal-actions-row">
+        <button class="modal-btn btn-delete" id="modal-delete-btn" style="display: none;">削除</button>
+        <button class="modal-btn btn-save" id="modal-save-btn">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Message -->
+  <div class="toast" id="app-toast">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">完了しました</span>
+  </div>
+
+  <!-- Tooltip Popover -->
+  <div class="tooltip-popover" id="app-tooltip"></div>
+
+</div>
+
+<script>
+/**
+ * TIME VISUALIZER - PWA Vanilla JS Application
+ * Fully self-contained logic: State, Storage, Vertical Timeline, Sleep Debt Analysis, Heatmaps
+ */
+
+// Category Specification
+const CATEGORIES = {
+  sleep: {
+    id: 'sleep',
+    name: '睡眠',
+    bg: '#dbeafe',
+    text: '#1e40af',
+    border: '#bfdbfe',
+    accent: '#3b82f6',
+    icon: '🌙',
+    subs: []
+  },
+  work: {
+    id: 'work',
+    name: '仕事 / 学習',
+    bg: '#f3f4f6',
+    text: '#374151',
+    border: '#e5e7eb',
+    accent: '#6b7280',
+    icon: '💼',
+    subs: []
+  },
+  life: {
+    id: 'life',
+    name: '生活',
+    bg: '#dcfce7',
+    text: '#166534',
+    border: '#bbf7d0',
+    accent: '#22c55e',
+    icon: '🌿',
+    subs: ['食事（家）', '外食', '身支度', '入浴', '家事', '買い物・用事']
+  },
+  transport: {
+    id: 'transport',
+    name: '移動',
+    bg: '#fef9c3',
+    text: '#854d0e',
+    border: '#fef08a',
+    accent: '#eab308',
+    icon: '🚆',
+    subs: []
+  },
+  travel: {
+    id: 'travel',
+    name: '旅行',
+    bg: '#ffedd5',
+    text: '#9a3412',
+    border: '#fed7aa',
+    accent: '#f97316',
+    icon: '✈️',
+    subs: []
+  },
+  free: {
+    id: 'free',
+    name: '自由時間',
+    bg: '#fce7f3',
+    text: '#9d174d',
+    border: '#fbcfe8',
+    accent: '#ec4899',
+    icon: '✨',
+    subs: ['趣味', 'ネット', '自己投資・運動', 'その他']
+  }
+};
+
+// Application State
+const state = {
+  currentDate: new Date(), // Selected date
+  targetSleepHours: 7.5,
+  events: {}, // key: "YYYY-MM-DD", val: Array of event objects
+  editingEventId: null, // null if creating
+  activeReportFilter: 'sleep', // 'sleep', 'free', 'all'
+  activeReportSubview: 'week', // 'week', 'month', 'year'
+  reportMonth: new Date()
+};
+
+// Utilities
+function formatDateKey(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(key) {
+  const parts = key.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function formatJapaneseDate(d) {
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 (${days[d.getDay()]})`;
+}
+
+function timeStringToMinutes(str) {
+  const [h, m] = str.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTimeString(mins) {
+  let h = Math.floor(mins / 60);
+  let m = Math.floor(mins % 60);
+  if (h >= 24) h = 24;
+  if (h === 24 && m > 0) m = 0;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function showToast(msg, icon = '✓') {
+  const toast = document.getElementById('app-toast');
+  const toastMsg = document.getElementById('toast-msg');
+  const toastIcon = document.getElementById('toast-icon');
+  toastMsg.textContent = msg;
+  toastIcon.textContent = icon;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2200);
+}
+
+// LocalStorage Persistence
+const STORAGE_KEY = 'time_visualizer_data_v1';
+const STORAGE_TARGET_KEY = 'time_visualizer_target_sleep_v1';
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.events));
+    localStorage.setItem(STORAGE_TARGET_KEY, JSON.stringify(state.targetSleepHours));
+  } catch (e) {
+    console.error('Storage save error:', e);
+  }
+}
+
+function loadState() {
+  try {
+    const savedTarget = localStorage.getItem(STORAGE_TARGET_KEY);
+    if (savedTarget) state.targetSleepHours = JSON.parse(savedTarget);
+
+    const savedEvents = localStorage.getItem(STORAGE_KEY);
+    if (savedEvents) {
+      state.events = JSON.parse(savedEvents);
+      return true;
+    }
+  } catch (e) {
+    console.error('Storage load error:', e);
+  }
+  return false;
+}
+
+// Generate Realistic Sample Data if empty (Requirement 2)
+function generateSampleData() {
+  const baseDate = new Date();
+  state.events = {};
+
+  // Generate 14 days of realistic logs up to today
+  for (let i = 13; i >= 0; i--) {
+    const target = new Date(baseDate);
+    target.setDate(baseDate.getDate() - i);
+    const key = formatDateKey(target);
+    const dayOfWeek = target.getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+    const dayEvents = [];
+
+    if (!isWeekend) {
+      // Workday routine
+      const sleepVariance = (i % 3 === 0) ? -45 : (i % 2 === 0 ? 30 : 0);
+      dayEvents.push(
+        { id: `samp_${key}_1`, start: 0, end: 420 + sleepVariance, cat: 'sleep', subCat: null, note: '就寝' },
+        { id: `samp_${key}_2`, start: 420 + sleepVariance, end: 480, cat: 'life', subCat: '身支度', note: '朝の準備・朝食' },
+        { id: `samp_${key}_3`, start: 480, end: 530, cat: 'transport', subCat: null, note: '通勤電車' },
+        { id: `samp_${key}_4`, start: 530, end: 720, cat: 'work', subCat: null, note: '午前の業務' },
+        { id: `samp_${key}_5`, start: 720, end: 780, cat: 'life', subCat: '外食', note: 'ランチ' },
+        { id: `samp_${key}_6`, start: 780, end: 1110, cat: 'work', subCat: null, note: '午後の開発業務' },
+        { id: `samp_${key}_7`, start: 1110, end: 1160, cat: 'transport', subCat: null, note: '帰宅' },
+        { id: `samp_${key}_8`, start: 1160, end: 1220, cat: 'life', subCat: '食事（家）', note: '夕食' },
+        { id: `samp_${key}_9`, start: 1220, end: 1260, cat: 'life', subCat: '入浴', note: 'お風呂' },
+        { id: `samp_${key}_10`, start: 1260, end: 1400, cat: 'free', subCat: '自己投資・運動', note: '読書・プログラミング' },
+        { id: `samp_${key}_11`, start: 1400, end: 1440, cat: 'sleep', subCat: null, note: '就寝準備・入眠' }
+      );
+    } else {
+      // Weekend routine
+      dayEvents.push(
+        { id: `samp_${key}_1`, start: 0, end: 510, cat: 'sleep', subCat: null, note: 'たっぷり睡眠' },
+        { id: `samp_${key}_2`, start: 510, end: 570, cat: 'life', subCat: '身支度', note: 'ブランチ・片付け' },
+        { id: `samp_${key}_3`, start: 570, end: 750, cat: 'free', subCat: '趣味', note: 'カフェ巡り & 散歩' },
+        { id: `samp_${key}_4`, start: 750, end: 840, cat: 'life', subCat: '外食', note: 'ランチ' },
+        { id: `samp_${key}_5`, start: 840, end: 1020, cat: 'life', subCat: '買い物・用事', note: '日用品の買い物' },
+        { id: `samp_${key}_6`, start: 1020, end: 1180, cat: 'free', subCat: 'ネット', note: '動画鑑賞・ゲーム' },
+        { id: `samp_${key}_7`, start: 1180, end: 1240, cat: 'life', subCat: '食事（家）', note: '夕食' },
+        { id: `samp_${key}_8`, start: 1240, end: 1290, cat: 'life', subCat: '入浴', note: '入浴' },
+        { id: `samp_${key}_9`, start: 1290, end: 1420, cat: 'free', subCat: '趣味', note: '映画鑑賞' },
+        { id: `samp_${key}_10`, start: 1420, end: 1440, cat: 'sleep', subCat: null, note: '就寝' }
+      );
+    }
+
+    state.events[key] = dayEvents;
+  }
+
+  saveState();
+}
+
+// Timeline Rendering & Management
+function renderTimeline() {
+  const currentKey = formatDateKey(state.currentDate);
+  const dayEvents = state.events[currentKey] || [];
+
+  // 1. Update Display Date
+  document.getElementById('display-date-text').textContent = formatJapaneseDate(state.currentDate);
+  document.getElementById('date-picker-input').value = currentKey;
+
+  // 2. Calculate daily metrics (Sleep & Free time)
+  let totalSleepMins = 0;
+  let totalFreeMins = 0;
+
+  dayEvents.forEach(evt => {
+    const dur = Math.max(0, evt.end - evt.start);
+    if (evt.cat === 'sleep') totalSleepMins += dur;
+    if (evt.cat === 'free') totalFreeMins += dur;
+  });
+
+  const sleepHours = (totalSleepMins / 60).toFixed(1);
+  const freeHours = (totalFreeMins / 60).toFixed(1);
+
+  document.getElementById('today-sleep-hours').textContent = sleepHours;
+  document.getElementById('today-free-hours').textContent = freeHours;
+
+  // Badges update
+  const sleepBadge = document.getElementById('today-sleep-badge');
+  if (totalSleepMins >= state.targetSleepHours * 60) {
+    sleepBadge.className = 'metric-status-badge badge-good';
+    sleepBadge.textContent = '目標達成';
+  } else if (totalSleepMins >= (state.targetSleepHours - 1) * 60) {
+    sleepBadge.className = 'metric-status-badge badge-good';
+    sleepBadge.textContent = '概ね良好';
+  } else {
+    sleepBadge.className = 'metric-status-badge badge-warn';
+    sleepBadge.textContent = '睡眠不足';
+  }
+
+  const freeBadge = document.getElementById('today-free-badge');
+  if (totalFreeMins >= 180) {
+    freeBadge.className = 'metric-status-badge badge-good';
+    freeBadge.textContent = '充実';
+  } else if (totalFreeMins >= 60) {
+    freeBadge.className = 'metric-status-badge badge-good';
+    freeBadge.textContent = '確保';
+  } else {
+    freeBadge.className = 'metric-status-badge badge-warn';
+    freeBadge.textContent = '少なめ';
+  }
+
+  // 3. Render Event Blocks
+  const eventsLayer = document.getElementById('timeline-events-layer');
+  eventsLayer.innerHTML = '';
+
+  const hourHeight = 52; // matches CSS --hour-height
+
+  dayEvents.forEach(evt => {
+    const startMin = Math.max(0, Math.min(1440, evt.start));
+    const endMin = Math.max(startMin, Math.min(1440, evt.end));
+    const durMin = endMin - startMin;
+    if (durMin <= 0) return;
+
+    const topPx = (startMin / 60) * hourHeight;
+    const heightPx = Math.max(22, (durMin / 60) * hourHeight);
+
+    const block = document.createElement('div');
+    block.className = `timeline-event-block cat-${evt.cat}`;
+    block.style.top = `${topPx}px`;
+    block.style.height = `${heightPx}px`;
+
+    const catDef = CATEGORIES[evt.cat] || CATEGORIES.work;
+    const subLabel = evt.subCat ? `<span class="event-sub-tag">${evt.subCat}</span>` : '';
+    const noteText = evt.note ? ` - ${evt.note}` : '';
+
+    block.innerHTML = `
+      <div class="event-title">
+        <span>${catDef.icon} ${catDef.name}</span>
+        ${subLabel}
+      </div>
+      <div class="event-time-range">
+        ${minutesToTimeString(startMin)} - ${minutesToTimeString(endMin)} (${(durMin/60).toFixed(1)}h)${noteText}
+      </div>
+    `;
+
+    block.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(evt);
+    });
+
+    eventsLayer.appendChild(block);
+  });
+
+  // 4. Update Current Time Line
+  updateCurrentTimeLine();
+}
+
+function updateCurrentTimeLine() {
+  const currentLine = document.getElementById('current-time-line');
+  const now = new Date();
+  const todayKey = formatDateKey(now);
+  const currentKey = formatDateKey(state.currentDate);
+
+  if (todayKey === currentKey) {
+    currentLine.style.display = 'block';
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const topPx = (nowMins / 60) * 52;
+    currentLine.style.top = `${topPx}px`;
+  } else {
+    currentLine.style.display = 'none';
+  }
+}
+
+// Background hour rows generator
+function initTimelineBg() {
+  const bg = document.getElementById('hour-rows-bg');
+  bg.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.style.top = `${h * 52}px`;
+    row.innerHTML = `<div class="hour-label">${String(h).padStart(2, '0')}:00</div>`;
+    bg.appendChild(row);
+  }
+}
+
+// Modal Form Logic (Fast & Intuitive 1-tap submission)
+let modalSelectedCat = 'work';
+let modalSelectedSubCat = null;
+
+function initModalUI() {
+  const catGrid = document.getElementById('modal-cat-grid');
+  catGrid.innerHTML = '';
+
+  Object.values(CATEGORIES).forEach(cat => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `cat-select-btn cat-${cat.id}`;
+    btn.dataset.cat = cat.id;
+    btn.innerHTML = `
+      <div class="cat-icon">${cat.icon}</div>
+      <div class="cat-text">${cat.name}</div>
+    `;
+
+    btn.addEventListener('click', () => {
+      onSelectMajorCategory(cat.id, true);
+    });
+
+    catGrid.appendChild(btn);
+  });
+}
+
+function onSelectMajorCategory(catId, isUserTap = false) {
+  modalSelectedCat = catId;
+  const catDef = CATEGORIES[catId];
+
+  // Update button selection visual
+  document.querySelectorAll('.cat-select-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.cat === catId);
+  });
+
+  const subWrapper = document.getElementById('subcat-wrapper');
+  const subGrid = document.getElementById('modal-subcat-grid');
+  subGrid.innerHTML = '';
+
+  if (catDef.subs && catDef.subs.length > 0) {
+    // Show subcategories
+    subWrapper.classList.add('active');
+    document.getElementById('subcat-label').textContent = `${catDef.name}の小カテゴリ:`;
+
+    catDef.subs.forEach(sub => {
+      const subBtn = document.createElement('button');
+      subBtn.type = 'button';
+      subBtn.className = 'subcat-pill-btn';
+      if (modalSelectedSubCat === sub) subBtn.classList.add('selected');
+      subBtn.textContent = sub;
+
+      // 1-tap subcategory selects and automatically saves for quick workflow!
+      subBtn.addEventListener('click', () => {
+        modalSelectedSubCat = sub;
+        document.querySelectorAll('.subcat-pill-btn').forEach(b => b.classList.remove('selected'));
+        subBtn.classList.add('selected');
+        saveEventFromModal();
+      });
+
+      subGrid.appendChild(subBtn);
+    });
+  } else {
+    // No subcategories (sleep, work, transport, travel)
+    subWrapper.classList.remove('active');
+    modalSelectedSubCat = null;
+    if (isUserTap) {
+      // 1-tap on categories without subcategory automatically saves!
+      saveEventFromModal();
+    }
+  }
+}
+
+function openCreateModal(startMins, endMins) {
+  state.editingEventId = null;
+  document.getElementById('modal-heading').textContent = '新しい行動を記録';
+  document.getElementById('modal-delete-btn').style.display = 'none';
+
+  document.getElementById('modal-start-time').value = minutesToTimeString(startMins);
+  document.getElementById('modal-end-time').value = minutesToTimeString(endMins);
+  document.getElementById('modal-memo-input').value = '';
+
+  updateModalDurationBadge();
+  onSelectMajorCategory('work', false);
+
+  document.getElementById('event-modal-backdrop').classList.add('show');
+}
+
+function openEditModal(evt) {
+  state.editingEventId = evt.id;
+  document.getElementById('modal-heading').textContent = '行動を編集';
+  document.getElementById('modal-delete-btn').style.display = 'block';
+
+  document.getElementById('modal-start-time').value = minutesToTimeString(evt.start);
+  document.getElementById('modal-end-time').value = minutesToTimeString(evt.end);
+  document.getElementById('modal-memo-input').value = evt.note || '';
+
+  modalSelectedCat = evt.cat;
+  modalSelectedSubCat = evt.subCat;
+
+  updateModalDurationBadge();
+
+  // Highlight major category without auto-saving
+  document.querySelectorAll('.cat-select-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.cat === evt.cat);
+  });
+
+  const catDef = CATEGORIES[evt.cat];
+  const subWrapper = document.getElementById('subcat-wrapper');
+  const subGrid = document.getElementById('modal-subcat-grid');
+  subGrid.innerHTML = '';
+
+  if (catDef.subs && catDef.subs.length > 0) {
+    subWrapper.classList.add('active');
+    catDef.subs.forEach(sub => {
+      const subBtn = document.createElement('button');
+      subBtn.type = 'button';
+      subBtn.className = `subcat-pill-btn ${evt.subCat === sub ? 'selected' : ''}`;
+      subBtn.textContent = sub;
+      subBtn.addEventListener('click', () => {
+        modalSelectedSubCat = sub;
+        document.querySelectorAll('.subcat-pill-btn').forEach(b => b.classList.remove('selected'));
+        subBtn.classList.add('selected');
+      });
+      subGrid.appendChild(subBtn);
+    });
+  } else {
+    subWrapper.classList.remove('active');
+  }
+
+  document.getElementById('event-modal-backdrop').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('event-modal-backdrop').classList.remove('show');
+}
+
+function updateModalDurationBadge() {
+  const sStr = document.getElementById('modal-start-time').value;
+  const eStr = document.getElementById('modal-end-time').value;
+  if (!sStr || !eStr) return;
+
+  let s = timeStringToMinutes(sStr);
+  let e = timeStringToMinutes(eStr);
+  if (e <= s) e = s + 60; // minimum duration
+
+  const durHours = ((e - s) / 60).toFixed(1);
+  document.getElementById('modal-duration-badge').textContent = `所要時間: ${durHours}時間`;
+}
+
+function saveEventFromModal() {
+  const sStr = document.getElementById('modal-start-time').value;
+  const eStr = document.getElementById('modal-end-time').value;
+  let s = timeStringToMinutes(sStr);
+  let e = timeStringToMinutes(eStr);
+
+  if (e <= s) {
+    e = Math.min(1440, s + 60);
+  }
+
+  const currentKey = formatDateKey(state.currentDate);
+  if (!state.events[currentKey]) state.events[currentKey] = [];
+
+  const note = document.getElementById('modal-memo-input').value.trim();
+
+  if (state.editingEventId) {
+    // Update existing
+    const idx = state.events[currentKey].findIndex(ev => ev.id === state.editingEventId);
+    if (idx !== -1) {
+      state.events[currentKey][idx] = {
+        id: state.editingEventId,
+        start: s,
+        end: e,
+        cat: modalSelectedCat,
+        subCat: modalSelectedSubCat,
+        note: note
+      };
+    }
+  } else {
+    // Create new
+    state.events[currentKey].push({
+      id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      start: s,
+      end: e,
+      cat: modalSelectedCat,
+      subCat: modalSelectedSubCat,
+      note: note
+    });
+  }
+
+  // Sort by start time
+  state.events[currentKey].sort((a, b) => a.start - b.start);
+
+  saveState();
+  closeModal();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('行動を保存しました');
+}
+
+function deleteCurrentEditingEvent() {
+  if (!state.editingEventId) return;
+  const currentKey = formatDateKey(state.currentDate);
+  if (state.events[currentKey]) {
+    state.events[currentKey] = state.events[currentKey].filter(ev => ev.id !== state.editingEventId);
+    saveState();
+  }
+  closeModal();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('削除しました', '🗑️');
+}
+
+// Drag & Tap Interaction on Timeline
+function initTimelineInteractions() {
+  const clickLayer = document.getElementById('timeline-click-layer');
+  const preview = document.getElementById('selection-preview');
+  const hourHeight = 52;
+
+  let isDragging = false;
+  let startY = 0;
+  let currentY = 0;
+  let dragStartMin = 0;
+
+  function getY(e) {
+    const rect = clickLayer.getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return Math.max(0, Math.min(rect.height, clientY - rect.top));
+  }
+
+  function snapToQuarterHour(mins) {
+    return Math.round(mins / 15) * 15;
+  }
+
+  function onPointerDown(e) {
+    isDragging = true;
+    startY = getY(e);
+    currentY = startY;
+    const rawMins = (startY / hourHeight) * 60;
+    dragStartMin = snapToQuarterHour(rawMins);
+
+    preview.style.display = 'block';
+    preview.style.top = `${(dragStartMin / 60) * hourHeight}px`;
+    preview.style.height = `${(15 / 60) * hourHeight}px`;
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging) return;
+    currentY = getY(e);
+    const rawEndMins = (currentY / hourHeight) * 60;
+    let endMin = snapToQuarterHour(rawEndMins);
+
+    let s = Math.min(dragStartMin, endMin);
+    let eTime = Math.max(dragStartMin, endMin);
+    if (eTime === s) eTime += 30; // minimum 30 min selection block
+
+    preview.style.top = `${(s / 60) * hourHeight}px`;
+    preview.style.height = `${((eTime - s) / 60) * hourHeight}px`;
+  }
+
+  function onPointerUp() {
+    if (!isDragging) return;
+    isDragging = false;
+    preview.style.display = 'none';
+
+    const rawEndMins = (currentY / hourHeight) * 60;
+    let endMin = snapToQuarterHour(rawEndMins);
+
+    let s = Math.min(dragStartMin, endMin);
+    let e = Math.max(dragStartMin, endMin);
+
+    // If simple tap with barely any movement, default to 1 hour block
+    if (Math.abs(currentY - startY) < 10) {
+      s = dragStartMin;
+      e = Math.min(1440, s + 60);
+    }
+
+    openCreateModal(s, e);
+  }
+
+  clickLayer.addEventListener('mousedown', onPointerDown);
+  window.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('mouseup', onPointerUp);
+
+  clickLayer.addEventListener('touchstart', onPointerDown, { passive: true });
+  window.addEventListener('touchmove', onPointerMove, { passive: true });
+  window.addEventListener('touchend', onPointerUp);
+}
+
+// Shortcut Actions: Workday Template, Holiday Template, Copy Yesterday
+function applyWorkdayTemplate() {
+  const currentKey = formatDateKey(state.currentDate);
+  state.events[currentKey] = [
+    { id: `tpl_${Date.now()}_1`, start: 0, end: 420, cat: 'sleep', subCat: null, note: '睡眠' },
+    { id: `tpl_${Date.now()}_2`, start: 420, end: 480, cat: 'life', subCat: '身支度', note: '朝食・準備' },
+    { id: `tpl_${Date.now()}_3`, start: 480, end: 540, cat: 'transport', subCat: null, note: '通勤' },
+    { id: `tpl_${Date.now()}_4`, start: 540, end: 720, cat: 'work', subCat: null, note: '仕事・午前の部' },
+    { id: `tpl_${Date.now()}_5`, start: 720, end: 780, cat: 'life', subCat: '食事（家）', note: '昼休み' },
+    { id: `tpl_${Date.now()}_6`, start: 780, end: 1080, cat: 'work', subCat: null, note: '仕事・午後の部' },
+    { id: `tpl_${Date.now()}_7`, start: 1080, end: 1140, cat: 'transport', subCat: null, note: '帰宅' },
+    { id: `tpl_${Date.now()}_8`, start: 1140, end: 1230, cat: 'life', subCat: '食事（家）', note: '夕食・家事' },
+    { id: `tpl_${Date.now()}_9`, start: 1230, end: 1275, cat: 'life', subCat: '入浴', note: 'お風呂' },
+    { id: `tpl_${Date.now()}_10`, start: 1275, end: 1410, cat: 'free', subCat: '自己投資・運動', note: '自由時間・読書' },
+    { id: `tpl_${Date.now()}_11`, start: 1410, end: 1440, cat: 'sleep', subCat: null, note: '就寝' }
+  ];
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('平日テンプレートを適用しました');
+}
+
+function applyHolidayTemplate() {
+  const currentKey = formatDateKey(state.currentDate);
+  state.events[currentKey] = [
+    { id: `tpl_${Date.now()}_1`, start: 0, end: 510, cat: 'sleep', subCat: null, note: '休日の良質な睡眠' },
+    { id: `tpl_${Date.now()}_2`, start: 510, end: 570, cat: 'life', subCat: '身支度', note: '朝の準備' },
+    { id: `tpl_${Date.now()}_3`, start: 570, end: 720, cat: 'free', subCat: '趣味', note: '趣味・リラックス' },
+    { id: `tpl_${Date.now()}_4`, start: 720, end: 810, cat: 'life', subCat: '外食', note: 'ランチ' },
+    { id: `tpl_${Date.now()}_5`, start: 810, end: 1020, cat: 'life', subCat: '買い物・用事', note: '外出・ショッピング' },
+    { id: `tpl_${Date.now()}_6`, start: 1020, end: 1170, cat: 'free', subCat: 'ネット', note: 'ネット・ゲーム' },
+    { id: `tpl_${Date.now()}_7`, start: 1170, end: 1230, cat: 'life', subCat: '食事（家）', note: '夕食' },
+    { id: `tpl_${Date.now()}_8`, start: 1230, end: 1290, cat: 'life', subCat: '入浴', note: '湯船でリフレッシュ' },
+    { id: `tpl_${Date.now()}_9`, start: 1290, end: 1410, cat: 'free', subCat: 'その他', note: '自由な団欒時間' },
+    { id: `tpl_${Date.now()}_10`, start: 1410, end: 1440, cat: 'sleep', subCat: null, note: '就寝' }
+  ];
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('休日テンプレートを適用しました');
+}
+
+function copyYesterday() {
+  const yesterday = new Date(state.currentDate);
+  yesterday.setDate(state.currentDate.getDate() - 1);
+  const yKey = formatDateKey(yesterday);
+  const currentKey = formatDateKey(state.currentDate);
+
+  if (!state.events[yKey] || state.events[yKey].length === 0) {
+    showToast('前日のデータがありません', '⚠️');
+    return;
+  }
+
+  // Deep clone events with new IDs
+  state.events[currentKey] = state.events[yKey].map(ev => ({
+    ...ev,
+    id: `cp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+  }));
+
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('昨日の予定をコピーしました');
+}
+
+// SCREEN 2: SLEEP ANALYSIS LOGIC
+function renderSleepAnalysis() {
+  document.getElementById('target-sleep-val').textContent = `${state.targetSleepHours.toFixed(1)}h`;
+
+  // 1. Calculate today's sleep
+  const currentKey = formatDateKey(state.currentDate);
+  const dayEvents = state.events[currentKey] || [];
+  let daySleepMins = 0;
+  dayEvents.forEach(ev => {
+    if (ev.cat === 'sleep') daySleepMins += (ev.end - ev.start);
+  });
+  const daySleepHours = daySleepMins / 60;
+
+  // Circular Progress Ring calculation
+  const targetMins = state.targetSleepHours * 60;
+  const percent = Math.min(100, Math.round((daySleepMins / targetMins) * 100));
+  
+  const circumference = 2 * Math.PI * 50; // r=50 -> ~314.159
+  const offset = circumference - (percent / 100) * circumference;
+  
+  const ringBar = document.getElementById('sleep-ring-progress');
+  ringBar.style.strokeDashoffset = offset;
+  document.getElementById('sleep-ring-percent').textContent = `${percent}%`;
+  document.getElementById('sleep-ring-detail').textContent = `${daySleepHours.toFixed(1)}h / ${state.targetSleepHours.toFixed(1)}h`;
+
+  const statusMsg = document.getElementById('sleep-ring-status-msg');
+  if (percent >= 100) {
+    statusMsg.textContent = '🎉 目標をしっかり達成！頭脳と体が十分に回復しています';
+    statusMsg.style.color = '#166534';
+  } else if (percent >= 80) {
+    statusMsg.textContent = '👍 おおむね目標通りです。日中の集中力を維持できます';
+    statusMsg.style.color = '#1e40af';
+  } else {
+    statusMsg.textContent = '⚠️ 睡眠が不足気味です。今夜は早めの就寝をおすすめします';
+    statusMsg.style.color = '#b91c1c';
+  }
+
+  // 2. 7-day Sleep Debt (Budget) Calculation
+  let total7DaysSleepMins = 0;
+  const recent7Days = [];
+  const baseD = new Date(state.currentDate);
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(baseD);
+    d.setDate(baseD.getDate() - i);
+    const key = formatDateKey(d);
+    const evs = state.events[key] || [];
+    let sMins = 0;
+    let sleepBlocks = [];
+
+    evs.forEach(e => {
+      if (e.cat === 'sleep') {
+        sMins += (e.end - e.start);
+        sleepBlocks.push({ start: e.start, end: e.end });
+      }
+    });
+
+    total7DaysSleepMins += sMins;
+    recent7Days.push({ date: d, key: key, sleepMins: sMins, blocks: sleepBlocks });
+  }
+
+  const target7DaysMins = state.targetSleepHours * 60 * 7;
+  const debtDiffHours = ((total7DaysSleepMins - target7DaysMins) / 60).toFixed(1);
+  const actualTotalHours = (total7DaysSleepMins / 60).toFixed(1);
+  const targetTotalHours = (target7DaysMins / 60).toFixed(1);
+
+  document.getElementById('debt-target-total').textContent = `${targetTotalHours}h`;
+  document.getElementById('debt-actual-total').textContent = `${actualTotalHours}h`;
+
+  const diffNum = parseFloat(debtDiffHours);
+  const diffElem = document.getElementById('debt-balance-diff');
+  const badgeElem = document.getElementById('sleep-debt-badge');
+  const adviceElem = document.getElementById('sleep-debt-advice');
+
+  if (diffNum >= 0) {
+    diffElem.textContent = `+${debtDiffHours}h`;
+    diffElem.style.color = '#166534';
+    badgeElem.textContent = '負債なし 🎉';
+    badgeElem.className = 'debt-status-tag badge-good';
+    adviceElem.textContent = '直近7日間の睡眠バジェットは満たされています！この健康的な睡眠リズムを維持しましょう。';
+  } else {
+    diffElem.textContent = `${debtDiffHours}h`;
+    diffElem.style.color = '#dc2626';
+    badgeElem.textContent = `不足 ${Math.abs(diffNum)}h ⚠️`;
+    badgeElem.className = 'debt-status-tag badge-warn';
+    adviceElem.textContent = `今週は累計 ${Math.abs(diffNum)}時間の睡眠不足（睡眠負債）が発生しています。休日に寝だめするのではなく、平日の就寝時刻を30〜45分前倒しして解消していきましょう。`;
+  }
+
+  // 3. Bedtime & Wakeup Consistency Chart
+  const chartContainer = document.getElementById('consistency-chart-rows');
+  chartContainer.innerHTML = '';
+
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  recent7Days.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'chart-row-day';
+
+    const dayName = `${item.date.getMonth() + 1}/${item.date.getDate()} (${dayNames[item.date.getDay()]})`;
+
+    const track = document.createElement('div');
+    track.className = 'chart-bar-track';
+
+    if (item.blocks.length > 0) {
+      item.blocks.forEach(blk => {
+        let s = blk.start;
+        let e = blk.end;
+
+        let leftPercent = (s / 1440) * 100;
+        let widthPercent = Math.max(3, ((e - s) / 1440) * 100);
+
+        const bar = document.createElement('div');
+        bar.className = 'chart-sleep-bar';
+        bar.style.left = `${leftPercent}%`;
+        bar.style.width = `${widthPercent}%`;
+        bar.textContent = `${( (e - s) / 60 ).toFixed(1)}h`;
+        track.appendChild(bar);
+      });
+    }
+
+    row.innerHTML = `<div class="chart-day-label">${dayName}</div>`;
+    row.appendChild(track);
+    chartContainer.appendChild(row);
+  });
+}
+
+// SCREEN 3: REPORTS & HEATMAP LOGIC
+function renderReports() {
+  const filter = state.activeReportFilter; // 'sleep', 'free', 'all'
+  const subview = state.activeReportSubview; // 'week', 'month', 'year'
+
+  // Toggle subviews
+  document.getElementById('subview-week').style.display = (subview === 'week') ? 'block' : 'none';
+  document.getElementById('subview-month').style.display = (subview === 'month') ? 'block' : 'none';
+  document.getElementById('subview-year').style.display = (subview === 'year') ? 'block' : 'none';
+
+  if (subview === 'week') {
+    renderWeeklyMatrix(filter);
+  } else if (subview === 'month') {
+    renderMonthlyCalendar(filter);
+  } else if (subview === 'year') {
+    renderYearlyHeatmap(filter);
+  }
+}
+
+// 1. Weekly Matrix (7 days x 24 hours)
+function renderWeeklyMatrix(filter) {
+  const container = document.getElementById('weekly-matrix-container');
+  container.innerHTML = '';
+
+  const baseD = new Date(state.currentDate);
+
+  // Generate 7 days ending at current date
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(baseD);
+    d.setDate(baseD.getDate() - i);
+    days.push(d);
+  }
+
+  // Header row (Empty top-left + 7 days)
+  const emptyHead = document.createElement('div');
+  container.appendChild(emptyHead);
+
+  days.forEach(d => {
+    const head = document.createElement('div');
+    head.className = 'matrix-header-cell';
+    head.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    container.appendChild(head);
+  });
+
+  // 24 Hour Rows
+  for (let h = 0; h < 24; h++) {
+    // Hour label
+    const label = document.createElement('div');
+    label.className = 'matrix-hour-label';
+    label.textContent = `${h}時`;
+    container.appendChild(label);
+
+    // 7 Day Cells for this hour
+    days.forEach(d => {
+      const key = formatDateKey(d);
+      const evs = state.events[key] || [];
+
+      const cell = document.createElement('div');
+      cell.className = 'matrix-cell';
+
+      // Check events active in this hour (h*60 to (h+1)*60)
+      const hStart = h * 60;
+      const hEnd = (h + 1) * 60;
+      const activeEv = evs.find(e => e.start < hEnd && e.end > hStart);
+
+      if (activeEv) {
+        if (filter === 'sleep') {
+          if (activeEv.cat === 'sleep') {
+            cell.style.background = '#60a5fa';
+            cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - 睡眠`;
+          }
+        } else if (filter === 'free') {
+          if (activeEv.cat === 'free') {
+            cell.style.background = '#f472b6';
+            cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - 自由時間 (${activeEv.subCat || ''})`;
+          }
+        } else {
+          // 'all' categories
+          const catDef = CATEGORIES[activeEv.cat];
+          cell.style.background = catDef ? catDef.accent : '#cbd5e1';
+          cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - ${catDef ? catDef.name : ''}`;
+        }
+      }
+
+      container.appendChild(cell);
+    });
+  }
+}
+
+// 2. Monthly Calendar Heatmap
+function renderMonthlyCalendar(filter) {
+  const grid = document.getElementById('month-calendar-grid');
+  grid.innerHTML = '';
+
+  const curYear = state.reportMonth.getFullYear();
+  const curMonth = state.reportMonth.getMonth();
+
+  document.getElementById('display-month-title').textContent = `${curYear}年${curMonth + 1}月`;
+
+  // Day header names
+  const dayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
+  dayHeaders.forEach(dh => {
+    const hc = document.createElement('div');
+    hc.className = 'cal-day-header';
+    hc.textContent = dh;
+    grid.appendChild(hc);
+  });
+
+  const firstDay = new Date(curYear, curMonth, 1).getDay();
+  const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+
+  // Blank slots for days before 1st
+  for (let b = 0; b < firstDay; b++) {
+    const blank = document.createElement('div');
+    grid.appendChild(blank);
+  }
+
+  // Days of month
+  for (let d = 1; d <= totalDays; d++) {
+    const thisDate = new Date(curYear, curMonth, d);
+    const key = formatDateKey(thisDate);
+    const evs = state.events[key] || [];
+
+    let valMins = 0;
+    evs.forEach(e => {
+      if (filter === 'sleep' && e.cat === 'sleep') valMins += (e.end - e.start);
+      if (filter === 'free' && e.cat === 'free') valMins += (e.end - e.start);
+      if (filter === 'all') valMins += (e.end - e.start);
+    });
+
+    const hours = (valMins / 60);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day-cell';
+
+    // Heatmap shades (4 levels)
+    let bg = '#ffffff';
+    let textColor = 'inherit';
+
+    if (hours > 0) {
+      if (filter === 'sleep') {
+        if (hours >= 7.5) { bg = '#93c5fd'; textColor = '#1e3a8a'; }
+        else if (hours >= 6.0) { bg = '#bfdbfe'; textColor = '#1e40af'; }
+        else if (hours >= 4.0) { bg = '#dbeafe'; textColor = '#2563eb'; }
+        else { bg = '#eff6ff'; textColor = '#3b82f6'; }
+      } else if (filter === 'free') {
+        if (hours >= 4.0) { bg = '#f472b6'; textColor = '#831843'; }
+        else if (hours >= 2.5) { bg = '#fbcfe8'; textColor = '#9d174d'; }
+        else if (hours >= 1.0) { bg = '#fce7f3'; textColor = '#be185d'; }
+        else { bg = '#fdf2f8'; textColor = '#db2777'; }
+      } else {
+        // all activities registered
+        if (hours >= 14) bg = '#a7f3d0';
+        else if (hours >= 8) bg = '#bbf7d0';
+        else bg = '#dcfce7';
+      }
+    }
+
+    cell.style.backgroundColor = bg;
+    cell.style.color = textColor;
+
+    cell.innerHTML = `
+      <span class="cal-day-num">${d}</span>
+      <span class="cal-day-val">${hours > 0 ? hours.toFixed(1) + 'h' : '-'}</span>
+    `;
+
+    cell.addEventListener('click', () => {
+      state.currentDate = thisDate;
+      switchScreen('screen-timeline');
+      renderTimeline();
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+// 3. Yearly Heatmap (GitHub 365 Days Grid)
+function renderYearlyHeatmap(filter) {
+  const scrollContainer = document.getElementById('yearly-heatmap-scroll');
+  scrollContainer.innerHTML = '';
+
+  const tooltip = document.getElementById('app-tooltip');
+  const today = new Date();
+  
+  // 52 weeks (364 days + today)
+  const totalDays = 52 * 7;
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - totalDays + 1);
+
+  let currentLoopDate = new Date(startDate);
+
+  // Group by 52 columns
+  for (let w = 0; w < 52; w++) {
+    const col = document.createElement('div');
+    col.className = 'year-col-week';
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const dKey = formatDateKey(currentLoopDate);
+      const evs = state.events[dKey] || [];
+
+      let valMins = 0;
+      evs.forEach(e => {
+        if (filter === 'sleep' && e.cat === 'sleep') valMins += (e.end - e.start);
+        if (filter === 'free' && e.cat === 'free') valMins += (e.end - e.start);
+        if (filter === 'all') valMins += (e.end - e.start);
+      });
+
+      const hours = (valMins / 60);
+
+      const dot = document.createElement('div');
+      dot.className = 'year-dot';
+
+      // 4 levels of pastel intensity
+      let bg = '#f1f5f9';
+      if (hours > 0) {
+        if (filter === 'sleep') {
+          if (hours >= 7.5) bg = '#2563eb';
+          else if (hours >= 6.5) bg = '#60a5fa';
+          else if (hours >= 5.0) bg = '#93c5fd';
+          else bg = '#dbeafe';
+        } else if (filter === 'free') {
+          if (hours >= 4.0) bg = '#db2777';
+          else if (hours >= 2.5) bg = '#f472b6';
+          else if (hours >= 1.0) bg = '#fbcfe8';
+          else bg = '#fce7f3';
+        } else {
+          if (hours >= 16) bg = '#16a34a';
+          else if (hours >= 10) bg = '#4ade80';
+          else if (hours >= 5) bg = '#86efac';
+          else bg = '#dcfce7';
+        }
+      }
+
+      dot.style.backgroundColor = bg;
+
+      // Tooltip handling
+      const labelText = `${dKey}: ${hours.toFixed(1)}時間`;
+      dot.addEventListener('mouseenter', (e) => {
+        tooltip.textContent = labelText;
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${e.clientX + 10}px`;
+        tooltip.style.top = `${e.clientY - 25}px`;
+      });
+      dot.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+
+      const clickedDate = new Date(currentLoopDate);
+      dot.addEventListener('click', () => {
+        state.currentDate = clickedDate;
+        switchScreen('screen-timeline');
+        renderTimeline();
+      });
+
+      col.appendChild(dot);
+      currentLoopDate.setDate(currentLoopDate.getDate() + 1);
+    }
+
+    scrollContainer.appendChild(col);
+  }
+
+  // Scroll to the latest end (today)
+  setTimeout(() => {
+    scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+  }, 10);
+}
+
+// Navigation Screen Switching
+function switchScreen(targetScreenId) {
+  document.querySelectorAll('.screen-view').forEach(sc => {
+    sc.classList.toggle('active', sc.id === targetScreenId);
+  });
+
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.screen === targetScreenId);
+  });
+
+  const headerDateControls = document.getElementById('header-timeline-controls');
+  if (targetScreenId === 'screen-timeline') {
+    headerDateControls.style.display = 'block';
+  } else {
+    headerDateControls.style.display = 'none';
+  }
+
+  if (targetScreenId === 'screen-sleep') {
+    renderSleepAnalysis();
+  } else if (targetScreenId === 'screen-reports') {
+    renderReports();
+  }
+}
+
+// Event Listeners Initialization
+function initEventListeners() {
+  // Navigation Tabs
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchScreen(btn.dataset.screen);
+    });
+  });
+
+  // Date Navigation
+  document.getElementById('prev-date-btn').addEventListener('click', () => {
+    state.currentDate.setDate(state.currentDate.getDate() - 1);
+    renderTimeline();
+  });
+
+  document.getElementById('next-date-btn').addEventListener('click', () => {
+    state.currentDate.setDate(state.currentDate.getDate() + 1);
+    renderTimeline();
+  });
+
+  document.getElementById('jump-today-btn').addEventListener('click', () => {
+    state.currentDate = new Date();
+    renderTimeline();
+  });
+
+  document.getElementById('date-picker-input').addEventListener('change', (e) => {
+    if (e.target.value) {
+      state.currentDate = parseDateKey(e.target.value);
+      renderTimeline();
+    }
+  });
+
+  // Shortcut Buttons
+  document.getElementById('btn-tpl-workday').addEventListener('click', applyWorkdayTemplate);
+  document.getElementById('btn-tpl-holiday').addEventListener('click', applyHolidayTemplate);
+  document.getElementById('btn-copy-yesterday').addEventListener('click', copyYesterday);
+  document.getElementById('btn-add-event-manual').addEventListener('click', () => {
+    openCreateModal(540, 600); // 9:00 - 10:00
+  });
+
+  // Modal Buttons & Inputs
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-save-btn').addEventListener('click', saveEventFromModal);
+  document.getElementById('modal-delete-btn').addEventListener('click', deleteCurrentEditingEvent);
+  document.getElementById('modal-start-time').addEventListener('input', updateModalDurationBadge);
+  document.getElementById('modal-end-time').addEventListener('input', updateModalDurationBadge);
+
+  // Backdrop click to close
+  document.getElementById('event-modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'event-modal-backdrop') closeModal();
+  });
+
+  // Sleep Goal Stepper
+  document.getElementById('btn-target-dec').addEventListener('click', () => {
+    if (state.targetSleepHours > 5.0) {
+      state.targetSleepHours = parseFloat((state.targetSleepHours - 0.5).toFixed(1));
+      saveState();
+      renderSleepAnalysis();
+    }
+  });
+
+  document.getElementById('btn-target-inc').addEventListener('click', () => {
+    if (state.targetSleepHours < 10.0) {
+      state.targetSleepHours = parseFloat((state.targetSleepHours + 0.5).toFixed(1));
+      saveState();
+      renderSleepAnalysis();
+    }
+  });
+
+  // Report Category Filter Buttons
+  document.querySelectorAll('.report-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.report-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeReportFilter = btn.dataset.filter;
+      renderReports();
+    });
+  });
+
+  // Report Subview Buttons
+  document.querySelectorAll('.report-subview-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.report-subview-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeReportSubview = btn.dataset.subview;
+      renderReports();
+    });
+  });
+
+  // Month navigation in calendar report
+  document.getElementById('prev-month-btn').addEventListener('click', () => {
+    state.reportMonth.setMonth(state.reportMonth.getMonth() - 1);
+    renderMonthlyCalendar(state.activeReportFilter);
+  });
+
+  document.getElementById('next-month-btn').addEventListener('click', () => {
+    state.reportMonth.setMonth(state.reportMonth.getMonth() + 1);
+    renderMonthlyCalendar(state.activeReportFilter);
+  });
+}
+
+// PWA Service Worker Registration using Data/Blob URL for true standalone single-file functionality
+function initServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      self.addEventListener('install', (e) => self.skipWaiting());
+      self.addEventListener('activate', (e) => self.clients.claim());
+      self.addEventListener('fetch', (e) => {
+        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(err => {
+      // Local preview or restriction handling
+    });
+  }
+}
+
+// App Initialization
+window.addEventListener('DOMContentLoaded', () => {
+  const hasExistingData = loadState();
+  if (!hasExistingData || Object.keys(state.events).length === 0) {
+    generateSampleData();
+  }
+
+  initTimelineBg();
+  initModalUI();
+  initTimelineInteractions();
+  initEventListeners();
+  initServiceWorker();
+
+  renderTimeline();
+
+  // Scroll to roughly 7:00 AM for quick natural view
+  setTimeout(() => {
+    const timelineScroll = document.querySelector('#screen-timeline');
+    if (timelineScroll) {
+      timelineScroll.scrollTop = 7 * 52 - 20; // 7:00 AM position
+    }
+  }, 100);
+});
+</script>
+
+</body>
+</html>
