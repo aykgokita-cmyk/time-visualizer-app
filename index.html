@@ -75,7 +75,7 @@
       --radius-lg: 20px;
       --radius-full: 9999px;
 
-      --hour-height: 52px; /* 1 hour height in timeline */
+      --hour-height: 40px; /* 1 hour height in timeline (compact 40px) */
     }
 
     body {
@@ -83,7 +83,9 @@
       background-color: var(--bg-main);
       color: var(--text-main);
       line-height: 1.5;
-      min-height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
       display: flex;
       justify-content: center;
       user-select: none;
@@ -93,12 +95,14 @@
     #app-container {
       width: 100%;
       max-width: 480px;
-      min-height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
       background-color: #ffffff;
       display: flex;
       flex-direction: column;
       position: relative;
       box-shadow: 0 0 35px rgba(0,0,0,0.06);
+      overflow: hidden;
     }
 
     /* Top App Header */
@@ -151,6 +155,22 @@
 
     .screen-view.active {
       display: block;
+    }
+
+    /* Screen 1 Timeline & Screen 3 Reports are strictly 1-page fit (no page scroll) */
+    #screen-timeline,
+    #screen-reports {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden !important;
+      padding-bottom: 70px;
+      flex-direction: column;
+    }
+
+    #screen-timeline.active,
+    #screen-reports.active {
+      display: flex;
     }
 
     /* Bottom Navigation */
@@ -287,19 +307,20 @@
       cursor: pointer;
     }
 
-    /* Summary Metric Pills */
+    /* Summary Metric Pills (Compact 2/3 size) */
     .metrics-summary-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 10px 16px 6px;
+      gap: 6px;
+      margin: 4px 10px 2px;
+      flex-shrink: 0;
     }
 
     .metric-pill {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -307,49 +328,51 @@
     }
 
     .metric-pill.sleep-pill {
-      border-left: 4px solid var(--color-sleep-accent);
-      background: linear-gradient(135deg, #ffffff 60%, #eff6ff 100%);
+      border-left: 3px solid var(--color-sleep-accent);
+      background: linear-gradient(135deg, #ffffff 65%, #eff6ff 100%);
     }
 
     .metric-pill.free-pill {
-      border-left: 4px solid var(--color-free-accent);
-      background: linear-gradient(135deg, #ffffff 60%, #fdf2f8 100%);
+      border-left: 3px solid var(--color-free-accent);
+      background: linear-gradient(135deg, #ffffff 65%, #fdf2f8 100%);
     }
 
     .metric-info h3 {
-      font-size: 0.7rem;
+      font-size: 0.62rem;
       color: var(--text-sub);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
     }
 
     .metric-value-row {
       display: flex;
       align-items: baseline;
-      gap: 4px;
-      margin-top: 2px;
+      gap: 2px;
+      margin-top: 1px;
     }
 
     .metric-hours {
-      font-size: 1.25rem;
+      font-size: 0.98rem;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       color: var(--text-main);
+      line-height: 1.1;
     }
 
     .metric-unit {
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       color: var(--text-sub);
       font-weight: 600;
     }
 
     .metric-status-badge {
-      font-size: 0.65rem;
+      font-size: 0.58rem;
       font-weight: 700;
-      padding: 2px 6px;
+      padding: 1px 4px;
       border-radius: var(--radius-full);
-      margin-left: 4px;
+      margin-left: 3px;
     }
 
     .badge-good {
@@ -362,13 +385,14 @@
       color: #b91c1c;
     }
 
-    /* Action Shortcuts Bar */
+    /* Action Shortcuts Bar (Compact 2/3 size) */
     .shortcuts-bar {
       display: flex;
-      gap: 8px;
-      padding: 6px 16px 10px;
+      gap: 5px;
+      padding: 2px 10px 4px;
       overflow-x: auto;
       scrollbar-width: none;
+      flex-shrink: 0;
     }
 
     .shortcuts-bar::-webkit-scrollbar {
@@ -380,13 +404,13 @@
       background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-full);
-      padding: 6px 12px;
-      font-size: 0.75rem;
+      padding: 3px 8px;
+      font-size: 0.66rem;
       font-weight: 600;
       color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 3px;
       cursor: pointer;
       box-shadow: var(--shadow-sm);
       transition: all 0.15s;
@@ -403,68 +427,70 @@
       border-color: #2563eb;
     }
 
-    /* 24h Vertical Timeline */
+    /* 24h Vertical Timeline (1-page fit, no scroll) */
     .timeline-container {
       position: relative;
-      margin: 8px 12px 20px;
+      margin: 2px 10px 6px;
       background: #ffffff;
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-sm);
       overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .timeline-header-hint {
-      padding: 8px 12px;
+      padding: 4px 10px;
       background: #f8fafc;
       border-bottom: 1px solid var(--border-light);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text-sub);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .timeline-scroll-area {
       position: relative;
-      height: calc(var(--hour-height) * 24);
-      background-size: 100% var(--hour-height);
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
 
-    /* Hour row grid */
+    /* Hour row grid (24 equal percentage slices) */
     .hour-row {
       position: absolute;
       left: 0;
       right: 0;
-      height: var(--hour-height);
-      border-top: 1px solid var(--border-light);
+      height: calc(100% / 24);
+      border-top: 1px solid #f1f5f9;
       display: flex;
       pointer-events: none;
-    }
-
-    .hour-row::after {
-      content: "";
-      position: absolute;
-      left: 54px;
-      right: 0;
-      top: 50%;
-      border-top: 1px dashed #f1f5f9;
+      box-sizing: border-box;
     }
 
     .hour-label {
-      width: 52px;
-      padding-right: 8px;
-      font-size: 0.72rem;
+      width: 44px;
+      padding-right: 6px;
+      font-size: 0.56rem;
       font-weight: 700;
       color: var(--text-muted);
       text-align: right;
-      transform: translateY(-8px);
+      transform: translateY(-50%);
       font-variant-numeric: tabular-nums;
+      line-height: 1;
+      user-select: none;
     }
 
     .timeline-click-layer {
       position: absolute;
-      left: 54px;
+      left: 44px;
       right: 0;
       top: 0;
       bottom: 0;
@@ -474,8 +500,8 @@
 
     .timeline-events-layer {
       position: absolute;
-      left: 56px;
-      right: 8px;
+      left: 46px;
+      right: 6px;
       top: 0;
       bottom: 0;
       pointer-events: none;
@@ -486,17 +512,22 @@
       position: absolute;
       left: 0;
       right: 0;
-      border-radius: 8px;
-      padding: 5px 8px;
+      border-radius: 4px;
+      padding: 0 4px;
       pointer-events: auto;
       cursor: pointer;
       border: 1px solid transparent;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
       overflow: hidden;
       display: flex;
-      flex-direction: column;
+      align-items: center;
       justify-content: flex-start;
+      font-size: 0.63rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-overflow: ellipsis;
       transition: transform 0.1s, box-shadow 0.15s;
+      box-sizing: border-box;
     }
 
     .timeline-event-block:active {
@@ -504,39 +535,21 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .event-title {
-      font-size: 0.78rem;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .event-title-single {
       display: flex;
       align-items: center;
-      gap: 4px;
-    }
-
-    .event-time-range {
-      font-size: 0.68rem;
-      font-weight: 600;
-      opacity: 0.85;
-      margin-top: 1px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .event-sub-tag {
-      display: inline-block;
-      font-size: 0.65rem;
-      padding: 1px 5px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.65);
-      margin-left: 4px;
-      font-weight: 600;
+      gap: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+      line-height: 1;
     }
 
     /* Current time indicator line */
     .current-time-line {
       position: absolute;
-      left: 48px;
+      left: 38px;
       right: 0;
       height: 2px;
       background: #ef4444;
@@ -548,9 +561,9 @@
       content: "";
       position: absolute;
       left: 0;
-      top: -4px;
-      width: 10px;
-      height: 10px;
+      top: -3px;
+      width: 8px;
+      height: 8px;
       background: #ef4444;
       border-radius: 50%;
     }
@@ -558,11 +571,11 @@
     /* Drag / Selection indicator */
     .timeline-selection-preview {
       position: absolute;
-      left: 56px;
-      right: 8px;
-      background: rgba(59, 130, 246, 0.18);
-      border: 2px dashed #3b82f6;
-      border-radius: 8px;
+      left: 46px;
+      right: 6px;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1.5px dashed #3b82f6;
+      border-radius: 4px;
       pointer-events: none;
       z-index: 20;
       display: none;
@@ -1134,19 +1147,37 @@
     }
 
     /* Screen 3: Heatmap Reports */
+    #screen-reports .analysis-header {
+      padding: 10px 16px 2px;
+      flex: 0 0 auto;
+    }
+
+    #screen-reports .analysis-header h2 {
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+
+    #screen-reports .analysis-header p {
+      font-size: 0.67rem;
+      color: var(--text-sub);
+    }
+
     .report-tabs {
       display: flex;
-      padding: 12px 16px 4px;
+      padding: 3px 16px 2px;
       gap: 6px;
+      flex: 0 0 auto;
     }
 
     .report-filter-btn {
       flex: 1;
-      padding: 8px 10px;
+      padding: 5px 8px;
       border-radius: var(--radius-full);
       background: #f1f5f9;
       border: 1px solid var(--border-color);
-      font-size: 0.74rem;
+      font-size: 0.70rem;
       font-weight: 700;
       color: var(--text-sub);
       cursor: pointer;
@@ -1162,19 +1193,20 @@
 
     .report-view-segment {
       display: flex;
-      margin: 8px 16px 12px;
+      margin: 4px 16px 6px;
       background: #f1f5f9;
-      padding: 3px;
+      padding: 2.5px;
       border-radius: var(--radius-md);
+      flex: 0 0 auto;
     }
 
     .report-subview-btn {
       flex: 1;
-      padding: 6px 8px;
+      padding: 5px 6px;
       border-radius: var(--radius-sm);
       border: none;
       background: transparent;
-      font-size: 0.72rem;
+      font-size: 0.70rem;
       font-weight: 700;
       color: var(--text-sub);
       cursor: pointer;
@@ -1187,33 +1219,51 @@
       box-shadow: var(--shadow-sm);
     }
 
-    /* 1. Weekly Matrix (7 days x 24 hours) */
+    /* 1. Weekly Matrix (7 days vertical x 24 hours horizontal) */
     .weekly-matrix-card {
-      padding: 12px 10px;
-      overflow-x: auto;
+      margin: 0 16px 6px;
+      padding: 8px 10px;
+      overflow-x: hidden;
+      flex: 0 0 auto;
     }
 
     .matrix-grid {
       display: grid;
-      grid-template-columns: 28px repeat(7, 1fr);
-      gap: 2px;
+      grid-template-columns: 46px repeat(24, 1fr);
+      gap: 1.5px;
+      align-items: center;
     }
 
     .matrix-header-cell {
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-align: center;
+      padding-bottom: 2px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .matrix-day-label {
       font-size: 0.65rem;
       font-weight: 700;
       color: var(--text-sub);
-      text-align: center;
-      padding: 3px 0;
+      text-align: left;
+      padding: 2px 2px;
+      cursor: pointer;
+      white-space: nowrap;
+      border-radius: 4px;
+      transition: all 0.15s;
     }
 
-    .matrix-hour-label {
-      font-size: 0.6rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-align: right;
-      padding-right: 4px;
-      line-height: 14px;
+    .matrix-day-label:hover, .matrix-day-label:active {
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .matrix-day-label.is-today {
+      color: #2563eb;
+      font-weight: 800;
     }
 
     .matrix-cell {
@@ -1225,83 +1275,108 @@
       transition: transform 0.1s;
     }
 
-    .matrix-cell:hover {
-      transform: scale(1.15);
+    .matrix-cell:hover, .matrix-cell:active {
+      transform: scale(1.2);
       z-index: 5;
     }
 
-    /* 2. Monthly Heatmap Calendar */
+    /* 2. Monthly Heatmap Calendar (1-page fit, no vertical scroll) */
     .month-calendar-wrap {
-      padding: 12px;
+      margin: 0 16px 2px;
+      padding: 8px 10px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .month-nav {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
+      flex: 0 0 auto;
     }
 
     .month-nav-title {
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       font-weight: 800;
     }
 
     .month-cal-grid {
+      flex: 1;
+      min-height: 0;
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
+      gap: 2.5px;
       text-align: center;
     }
 
     .cal-day-header {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 700;
       color: var(--text-muted);
-      padding-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 2px;
     }
 
     .cal-day-cell {
-      aspect-ratio: 1;
-      border-radius: 6px;
+      height: 100%;
+      min-height: 0;
+      border-radius: 5px;
       background: #f8fafc;
       border: 1px solid var(--border-light);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 700;
       cursor: pointer;
       position: relative;
+      padding: 1px 0;
+      line-height: 1.1;
+    }
+
+    .cal-day-blank {
+      height: 100%;
     }
 
     .cal-day-num {
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--text-sub);
     }
 
     .cal-day-val {
-      font-size: 0.62rem;
+      font-size: 0.60rem;
       font-weight: 800;
       margin-top: 1px;
     }
 
-    /* 3. Yearly Heatmap (GitHub style 365 days) */
+    /* 3. Yearly Heatmap (GitHub style 365 days, 100% width, no horizontal scroll) */
     .yearly-heatmap-wrap {
-      padding: 12px;
-      overflow-x: auto;
+      margin: 0 16px 2px;
+      padding: 10px 12px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .yearly-header-info {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
+      flex: 0 0 auto;
     }
 
     .yearly-title {
-      font-size: 0.86rem;
+      font-size: 0.84rem;
       font-weight: 700;
     }
 
@@ -1309,34 +1384,172 @@
       display: flex;
       align-items: center;
       gap: 3px;
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       color: var(--text-sub);
     }
 
     .legend-box {
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       border-radius: 2px;
     }
 
     .year-grid-scroll {
       display: flex;
-      gap: 3px;
-      padding-bottom: 8px;
+      gap: 1.5px;
+      width: 100%;
+      padding-bottom: 4px;
+      flex: 0 0 auto;
+      justify-content: space-between;
+      overflow: hidden;
     }
 
     .year-col-week {
-      display: grid;
-      grid-template-rows: repeat(7, 10px);
-      gap: 3px;
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5px;
     }
 
     .year-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 1.5px;
       background: #f1f5f9;
       cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .year-dot:hover, .year-dot.active {
+      transform: scale(2.2);
+      z-index: 10;
+      box-shadow: 0 0 5px rgba(0,0,0,0.35);
+    }
+
+    .yearly-interactive-panel {
+      margin-top: 8px;
+      flex: 0 0 auto;
+    }
+
+    .yearly-selected-badge {
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 0.70rem;
+      color: var(--text-sub);
+      text-align: center;
+      font-weight: 600;
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .yearly-stats-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+      flex: 0 0 auto;
+    }
+
+    .yearly-stat-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 6px 4px;
+      text-align: center;
+    }
+
+    .yearly-stat-val {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .yearly-stat-lbl {
+      font-size: 0.60rem;
+      color: var(--text-sub);
+      margin-top: 1px;
+    }
+
+    /* 4. Backup & Data Management Card */
+    .backup-card {
+      margin: 0 16px 2px;
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      flex: 0 0 auto;
+    }
+
+    .backup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .backup-title {
+      font-size: 0.80rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .backup-count-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #eff6ff;
+      color: #2563eb;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      border: 1px solid #bfdbfe;
+    }
+
+    .backup-desc {
+      font-size: 0.68rem;
+      color: var(--text-sub);
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .backup-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .backup-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .backup-btn:active {
+      transform: scale(0.98);
+    }
+
+    .backup-btn.export-btn {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .backup-btn.import-btn {
+      background: #ffffff;
+      color: var(--text-main);
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-sm);
     }
 
     /* Toast Notification */
@@ -1428,7 +1641,7 @@
             <span class="metric-status-badge badge-good" id="today-sleep-badge">適正</span>
           </div>
         </div>
-        <div style="font-size: 1.5rem;">🌙</div>
+        <div style="font-size: 1.15rem;">🌙</div>
       </div>
 
       <div class="metric-pill free-pill">
@@ -1440,17 +1653,17 @@
             <span class="metric-status-badge badge-good" id="today-free-badge">確保</span>
           </div>
         </div>
-        <div style="font-size: 1.5rem;">✨</div>
+        <div style="font-size: 1.15rem;">✨</div>
       </div>
     </section>
 
     <!-- Shortcut Templates Bar -->
     <section class="shortcuts-bar">
       <button class="shortcut-btn" id="btn-tpl-workday">
-        <span>💼</span> 平日テンプレート適用
+        <span>💼</span> 平日テンプレート
       </button>
       <button class="shortcut-btn" id="btn-tpl-holiday">
-        <span>🏖️</span> 休日テンプレート適用
+        <span>🏖️</span> 休日テンプレート
       </button>
       <button class="shortcut-btn" id="btn-copy-yesterday">
         <span>🔄</span> 昨日をコピー
@@ -1614,7 +1827,7 @@
       </div>
     </div>
 
-    <!-- VIEW 3: Yearly Heatmap (GitHub style 365 days) -->
+    <!-- VIEW 3: Yearly Heatmap (GitHub style 365 days, 100% width, no horizontal scroll) -->
     <div id="subview-year" class="card yearly-heatmap-wrap" style="display: none;">
       <div class="yearly-header-info">
         <span class="yearly-title" id="yearly-display-title">直近1年間の達成度</span>
@@ -1629,6 +1842,38 @@
       </div>
       <div class="year-grid-scroll" id="yearly-heatmap-scroll">
         <!-- 52 columns x 7 rows rendered by JS -->
+      </div>
+      <div class="yearly-interactive-panel" id="yearly-interactive-panel">
+        <div class="yearly-selected-badge" id="yearly-selected-text">
+          <span>👆 マスをタップすると日付と実績時間が表示されます</span>
+        </div>
+      </div>
+      <div class="yearly-stats-summary" id="yearly-stats-summary">
+        <!-- Populated by JS: 記録日数, 年間合計, 1日平均 -->
+      </div>
+    </div>
+
+    <!-- VIEW 4: Backup & Data Management Card -->
+    <div class="card backup-card" id="reports-backup-card">
+      <div class="backup-header">
+        <span class="backup-title">
+          <span>💾</span> データ管理 & バックアップ
+        </span>
+        <span class="backup-count-badge" id="backup-data-count">0日分</span>
+      </div>
+      <p class="backup-desc">
+        端末変更やデータ保全のために、スケジュール全記録と目標設定をJSONファイルとして保存・復元できます。
+      </p>
+      <div class="backup-actions-row">
+        <button class="backup-btn export-btn" id="btn-export-json">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          JSONエクスポート
+        </button>
+        <button class="backup-btn import-btn" id="btn-import-json">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          JSONインポート
+        </button>
+        <input type="file" id="json-file-input" accept=".json" style="display: none;">
       </div>
     </div>
   </main>
@@ -1715,6 +1960,32 @@
         <button class="modal-btn btn-delete" id="modal-delete-btn" style="display: none;">削除</button>
         <button class="modal-btn btn-save" id="modal-save-btn">保存する</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Import Choice Modal Sheet -->
+  <div class="modal-backdrop" id="import-modal-backdrop">
+    <div class="modal-sheet" style="max-width: 440px;">
+      <div class="modal-handle"></div>
+      <div class="modal-sheet-header">
+        <h2>バックアップの復元</h2>
+        <button class="modal-close-btn" id="import-modal-close-btn" aria-label="閉じる">✕</button>
+      </div>
+      <div id="import-preview-info" style="font-size: 0.78rem; color: var(--text-sub); margin-bottom: 14px; background: #f8fafc; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); line-height: 1.5;">
+        <!-- Injected by JS -->
+      </div>
+      <p style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">復元方法を選択してください：</p>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+        <button class="modal-btn" id="btn-import-merge" style="background: #eff6ff; color: #1e40af; border: 1.5px solid #bfdbfe; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+          <span style="font-size: 0.85rem; font-weight: 800;">🤝 統合（マージ）</span>
+          <span style="font-size: 0.7rem; color: #3b82f6; font-weight: 600;">既存のデータを残したまま、バックアップ内の予定を追加・更新します</span>
+        </button>
+        <button class="modal-btn" id="btn-import-overwrite" style="background: #fef2f2; color: #991b1b; border: 1.5px solid #fecaca; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+          <span style="font-size: 0.85rem; font-weight: 800;">⚠️ 完全上書き</span>
+          <span style="font-size: 0.7rem; color: #dc2626; font-weight: 600;">現在のデータをすべて消去し、バックアップの内容で置き換えます</span>
+        </button>
+      </div>
+      <button class="modal-btn" id="btn-import-cancel" style="background: #f1f5f9; color: var(--text-sub); font-size: 0.8rem; padding: 9px;">キャンセル</button>
     </div>
   </div>
 
@@ -1986,11 +2257,9 @@ function renderTimeline() {
     freeBadge.textContent = '少なめ';
   }
 
-  // 3. Render Event Blocks
+  // 3. Render Event Blocks (1-page fit with percentage coordinates)
   const eventsLayer = document.getElementById('timeline-events-layer');
   eventsLayer.innerHTML = '';
-
-  const hourHeight = 52; // matches CSS --hour-height
 
   dayEvents.forEach(evt => {
     const startMin = Math.max(0, Math.min(1440, evt.start));
@@ -1998,27 +2267,30 @@ function renderTimeline() {
     const durMin = endMin - startMin;
     if (durMin <= 0) return;
 
-    const topPx = (startMin / 60) * hourHeight;
-    const heightPx = Math.max(22, (durMin / 60) * hourHeight);
+    // Relative percentage placement (0% to 100% of 24h)
+    const topPercent = (startMin / 1440) * 100;
+    const heightPercent = Math.max(1.1, (durMin / 1440) * 100);
 
     const block = document.createElement('div');
     block.className = `timeline-event-block cat-${evt.cat}`;
-    block.style.top = `${topPx}px`;
-    block.style.height = `${heightPx}px`;
+    block.style.top = `${topPercent}%`;
+    block.style.height = `${heightPercent}%`;
 
     const catDef = CATEGORIES[evt.cat] || CATEGORIES.work;
-    const subLabel = evt.subCat ? `<span class="event-sub-tag">${evt.subCat}</span>` : '';
-    const noteText = evt.note ? ` - ${evt.note}` : '';
+    const subLabel = evt.subCat ? ` [${evt.subCat}]` : '';
 
-    block.innerHTML = `
-      <div class="event-title">
-        <span>${catDef.icon} ${catDef.name}</span>
-        ${subLabel}
-      </div>
-      <div class="event-time-range">
-        ${minutesToTimeString(startMin)} - ${minutesToTimeString(endMin)} (${(durMin/60).toFixed(1)}h)${noteText}
-      </div>
-    `;
+    // If block is very thin (less than 30 mins), display icon only or minimal
+    if (durMin <= 25) {
+      block.innerHTML = `<span style="font-size:0.6rem; line-height:1;">${catDef.icon}</span>`;
+      block.title = `${catDef.name}${subLabel} (${minutesToTimeString(startMin)}-${minutesToTimeString(endMin)})`;
+    } else {
+      block.innerHTML = `
+        <div class="event-title-single">
+          <span>${catDef.icon} ${catDef.name}${subLabel}</span>
+          <span style="opacity:0.8; font-size:0.56rem; margin-left:auto; font-variant-numeric:tabular-nums; flex-shrink:0;">${minutesToTimeString(startMin)}-${minutesToTimeString(endMin)}</span>
+        </div>
+      `;
+    }
 
     block.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2041,24 +2313,38 @@ function updateCurrentTimeLine() {
   if (todayKey === currentKey) {
     currentLine.style.display = 'block';
     const nowMins = now.getHours() * 60 + now.getMinutes();
-    const topPx = (nowMins / 60) * 52;
-    currentLine.style.top = `${topPx}px`;
+    const topPercent = (nowMins / 1440) * 100;
+    currentLine.style.top = `${topPercent}%`;
   } else {
     currentLine.style.display = 'none';
   }
 }
 
-// Background hour rows generator
+// Background hour rows generator (0 to 24 hours in 24 equal slices with 2-hour label steps)
 function initTimelineBg() {
   const bg = document.getElementById('hour-rows-bg');
   bg.innerHTML = '';
   for (let h = 0; h < 24; h++) {
     const row = document.createElement('div');
     row.className = 'hour-row';
-    row.style.top = `${h * 52}px`;
-    row.innerHTML = `<div class="hour-label">${String(h).padStart(2, '0')}:00</div>`;
+    row.style.top = `${(h / 24) * 100}%`;
+
+    // Only even hours (0:00, 2:00, 4:00, 6:00...) display numeric label text
+    const labelHtml = (h % 2 === 0) 
+      ? `<div class="hour-label">${String(h).padStart(2, '0')}:00</div>` 
+      : `<div class="hour-label" style="visibility:hidden;">${String(h).padStart(2, '0')}:00</div>`;
+
+    row.innerHTML = labelHtml;
     bg.appendChild(row);
   }
+
+  // 24:00 bottom line label
+  const bottomRow = document.createElement('div');
+  bottomRow.className = 'hour-row';
+  bottomRow.style.top = '100%';
+  bottomRow.style.borderTop = '1px solid var(--border-light)';
+  bottomRow.innerHTML = `<div class="hour-label">24:00</div>`;
+  bg.appendChild(bottomRow);
 }
 
 // Modal Form Logic (Fast & Intuitive 1-tap submission)
@@ -2275,71 +2561,78 @@ function deleteCurrentEditingEvent() {
   showToast('削除しました', '🗑️');
 }
 
-// Drag & Tap Interaction on Timeline
+// Drag & Tap Interaction on Timeline (1-page fit with responsive coordinates)
 function initTimelineInteractions() {
   const clickLayer = document.getElementById('timeline-click-layer');
   const preview = document.getElementById('selection-preview');
-  const hourHeight = 52;
 
   let isDragging = false;
   let startY = 0;
   let currentY = 0;
   let dragStartMin = 0;
 
-  function getY(e) {
+  function getMinsFromEvent(e) {
     const rect = clickLayer.getBoundingClientRect();
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return Math.max(0, Math.min(rect.height, clientY - rect.top));
+    const clampedY = Math.max(0, Math.min(rect.height, clientY - rect.top));
+    const ratio = clampedY / rect.height;
+    return Math.max(0, Math.min(1440, ratio * 1440));
   }
 
-  function snapToQuarterHour(mins) {
-    return Math.round(mins / 15) * 15;
+  function snapToHalfHour(mins) {
+    return Math.floor(mins / 30) * 30;
   }
 
   function onPointerDown(e) {
     isDragging = true;
-    startY = getY(e);
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startY = clientY;
     currentY = startY;
-    const rawMins = (startY / hourHeight) * 60;
-    dragStartMin = snapToQuarterHour(rawMins);
+
+    const rawMins = getMinsFromEvent(e);
+    dragStartMin = snapToHalfHour(rawMins);
 
     preview.style.display = 'block';
-    preview.style.top = `${(dragStartMin / 60) * hourHeight}px`;
-    preview.style.height = `${(15 / 60) * hourHeight}px`;
+    preview.style.top = `${(dragStartMin / 1440) * 100}%`;
+    preview.style.height = `${(30 / 1440) * 100}%`;
   }
 
   function onPointerMove(e) {
     if (!isDragging) return;
-    currentY = getY(e);
-    const rawEndMins = (currentY / hourHeight) * 60;
-    let endMin = snapToQuarterHour(rawEndMins);
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    currentY = clientY;
 
-    let s = Math.min(dragStartMin, endMin);
-    let eTime = Math.max(dragStartMin, endMin);
-    if (eTime === s) eTime += 30; // minimum 30 min selection block
+    const rawMins = getMinsFromEvent(e);
+    let currentSnapMin = Math.round(rawMins / 30) * 30;
 
-    preview.style.top = `${(s / 60) * hourHeight}px`;
-    preview.style.height = `${((eTime - s) / 60) * hourHeight}px`;
+    let s = Math.min(dragStartMin, currentSnapMin);
+    let eTime = Math.max(dragStartMin, currentSnapMin);
+    if (eTime === s) eTime += 30;
+
+    preview.style.top = `${(s / 1440) * 100}%`;
+    preview.style.height = `${((eTime - s) / 1440) * 100}%`;
   }
 
-  function onPointerUp() {
+  function onPointerUp(e) {
     if (!isDragging) return;
     isDragging = false;
     preview.style.display = 'none';
 
-    const rawEndMins = (currentY / hourHeight) * 60;
-    let endMin = snapToQuarterHour(rawEndMins);
+    const rawMins = getMinsFromEvent(e);
+    let currentSnapMin = Math.round(rawMins / 30) * 30;
 
-    let s = Math.min(dragStartMin, endMin);
-    let e = Math.max(dragStartMin, endMin);
+    let s = Math.min(dragStartMin, currentSnapMin);
+    let eTime = Math.max(dragStartMin, currentSnapMin);
 
-    // If simple tap with barely any movement, default to 1 hour block
-    if (Math.abs(currentY - startY) < 10) {
+    // If simple tap with barely any drag movement, select default 1-hour block
+    if (Math.abs(currentY - startY) < 8) {
       s = dragStartMin;
-      e = Math.min(1440, s + 60);
+      eTime = Math.min(1440, s + 60);
+    } else if (eTime === s) {
+      eTime = Math.min(1440, s + 30);
     }
 
-    openCreateModal(s, e);
+    openCreateModal(s, eTime);
   }
 
   clickLayer.addEventListener('mousedown', onPointerDown);
@@ -2552,8 +2845,14 @@ function renderReports() {
 
   // Toggle subviews
   document.getElementById('subview-week').style.display = (subview === 'week') ? 'block' : 'none';
-  document.getElementById('subview-month').style.display = (subview === 'month') ? 'block' : 'none';
-  document.getElementById('subview-year').style.display = (subview === 'year') ? 'block' : 'none';
+  document.getElementById('subview-month').style.display = (subview === 'month') ? 'flex' : 'none';
+  document.getElementById('subview-year').style.display = (subview === 'year') ? 'flex' : 'none';
+
+  // Toggle backup card: only show in 'week' subview
+  const backupCard = document.getElementById('reports-backup-card');
+  if (backupCard) {
+    backupCard.style.display = (subview === 'week') ? 'block' : 'none';
+  }
 
   if (subview === 'week') {
     renderWeeklyMatrix(filter);
@@ -2562,16 +2861,20 @@ function renderReports() {
   } else if (subview === 'year') {
     renderYearlyHeatmap(filter);
   }
+
+  updateBackupDataCount();
 }
 
-// 1. Weekly Matrix (7 days x 24 hours)
+// 1. Weekly Matrix (7 days vertical x 24 hours horizontal)
 function renderWeeklyMatrix(filter) {
   const container = document.getElementById('weekly-matrix-container');
   container.innerHTML = '';
 
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
   const baseD = new Date(state.currentDate);
+  const todayKey = formatDateKey(new Date());
 
-  // Generate 7 days ending at current date
+  // Generate 7 days in chronological order: past days -> today (top to bottom)
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(baseD);
@@ -2579,63 +2882,94 @@ function renderWeeklyMatrix(filter) {
     days.push(d);
   }
 
-  // Header row (Empty top-left + 7 days)
+  // 1. Header row (Empty top-left + 24 hour labels)
   const emptyHead = document.createElement('div');
+  emptyHead.className = 'matrix-header-cell';
   container.appendChild(emptyHead);
 
-  days.forEach(d => {
+  for (let h = 0; h < 24; h++) {
     const head = document.createElement('div');
     head.className = 'matrix-header-cell';
-    head.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    // Show major hour marks (0, 6, 12, 18, 23) cleanly
+    if (h === 0 || h === 6 || h === 12 || h === 18) {
+      head.textContent = `${h}`;
+    } else if (h === 23) {
+      head.textContent = '23';
+    } else {
+      head.textContent = '·';
+      head.style.opacity = '0.35';
+    }
     container.appendChild(head);
-  });
+  }
 
-  // 24 Hour Rows
-  for (let h = 0; h < 24; h++) {
-    // Hour label
-    const label = document.createElement('div');
-    label.className = 'matrix-hour-label';
-    label.textContent = `${h}時`;
-    container.appendChild(label);
+  // 2. 7 Day Rows (each row: 1 day label + 24 hourly activity cells)
+  days.forEach(d => {
+    const key = formatDateKey(d);
+    const evs = state.events[key] || [];
+    const isToday = (key === todayKey);
 
-    // 7 Day Cells for this hour
-    days.forEach(d => {
-      const key = formatDateKey(d);
-      const evs = state.events[key] || [];
+    // Left Day Label
+    const dayLabel = document.createElement('div');
+    dayLabel.className = `matrix-day-label ${isToday ? 'is-today' : ''}`;
+    dayLabel.textContent = `${d.getMonth() + 1}/${d.getDate()}(${dayNames[d.getDay()]})`;
+    dayLabel.title = 'タップしてこの日のタイムラインを表示';
 
+    // Tap day label jumps to timeline screen
+    dayLabel.addEventListener('click', () => {
+      state.currentDate = new Date(d);
+      switchScreen('screen-timeline');
+      renderTimeline();
+      showToast(`${formatJapaneseDate(d)} を表示しました`, '📅');
+    });
+
+    container.appendChild(dayLabel);
+
+    // 24 Hour cells for this day
+    for (let h = 0; h < 24; h++) {
       const cell = document.createElement('div');
       cell.className = 'matrix-cell';
 
-      // Check events active in this hour (h*60 to (h+1)*60)
       const hStart = h * 60;
       const hEnd = (h + 1) * 60;
       const activeEv = evs.find(e => e.start < hEnd && e.end > hStart);
 
       if (activeEv) {
-        if (filter === 'sleep') {
-          if (activeEv.cat === 'sleep') {
-            cell.style.background = '#60a5fa';
-            cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - 睡眠`;
-          }
-        } else if (filter === 'free') {
-          if (activeEv.cat === 'free') {
-            cell.style.background = '#f472b6';
-            cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - 自由時間 (${activeEv.subCat || ''})`;
-          }
-        } else {
-          // 'all' categories
-          const catDef = CATEGORIES[activeEv.cat];
+        const catDef = CATEGORIES[activeEv.cat] || CATEGORIES.work;
+        let isMatch = false;
+
+        if (filter === 'sleep' && activeEv.cat === 'sleep') {
+          cell.style.background = '#60a5fa';
+          isMatch = true;
+        } else if (filter === 'free' && activeEv.cat === 'free') {
+          cell.style.background = '#f472b6';
+          isMatch = true;
+        } else if (filter === 'all') {
           cell.style.background = catDef ? catDef.accent : '#cbd5e1';
-          cell.title = `${d.getMonth()+1}/${d.getDate()} ${h}:00 - ${catDef ? catDef.name : ''}`;
+          isMatch = true;
         }
+
+        const detailMsg = `${d.getMonth() + 1}/${d.getDate()} ${h}:00〜${h + 1}:00\n${catDef.icon} ${catDef.name}${activeEv.subCat ? ' (' + activeEv.subCat + ')' : ''}${activeEv.note ? ' - ' + activeEv.note : ''}`;
+        cell.title = detailMsg;
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToast(detailMsg, catDef.icon || '✓');
+        });
+      } else {
+        const emptyMsg = `${d.getMonth() + 1}/${d.getDate()} ${h}:00〜${h + 1}:00\n予定なし`;
+        cell.title = emptyMsg;
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToast(emptyMsg, 'ℹ️');
+        });
       }
 
       container.appendChild(cell);
-    });
-  }
+    }
+  });
 }
 
-// 2. Monthly Calendar Heatmap
+// 2. Monthly Calendar Heatmap (1-page fit, no vertical scroll)
 function renderMonthlyCalendar(filter) {
   const grid = document.getElementById('month-calendar-grid');
   grid.innerHTML = '';
@@ -2657,9 +2991,14 @@ function renderMonthlyCalendar(filter) {
   const firstDay = new Date(curYear, curMonth, 1).getDay();
   const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
 
+  // Dynamic row calculation to split 100% available height into equal rows
+  const numWeeks = Math.ceil((firstDay + totalDays) / 7);
+  grid.style.gridTemplateRows = `18px repeat(${numWeeks}, 1fr)`;
+
   // Blank slots for days before 1st
   for (let b = 0; b < firstDay; b++) {
     const blank = document.createElement('div');
+    blank.className = 'cal-day-blank';
     grid.appendChild(blank);
   }
 
@@ -2722,7 +3061,7 @@ function renderMonthlyCalendar(filter) {
   }
 }
 
-// 3. Yearly Heatmap (GitHub 365 Days Grid)
+// 3. Yearly Heatmap (GitHub 365 Days Grid, 100% width, no horizontal scroll)
 function renderYearlyHeatmap(filter) {
   const scrollContainer = document.getElementById('yearly-heatmap-scroll');
   scrollContainer.innerHTML = '';
@@ -2736,6 +3075,8 @@ function renderYearlyHeatmap(filter) {
   startDate.setDate(today.getDate() - totalDays + 1);
 
   let currentLoopDate = new Date(startDate);
+  let totalLoggedDays = 0;
+  let totalHours = 0;
 
   // Group by 52 columns
   for (let w = 0; w < 52; w++) {
@@ -2754,6 +3095,10 @@ function renderYearlyHeatmap(filter) {
       });
 
       const hours = (valMins / 60);
+      if (hours > 0) {
+        totalLoggedDays++;
+        totalHours += hours;
+      }
 
       const dot = document.createElement('div');
       dot.className = 'year-dot';
@@ -2781,9 +3126,20 @@ function renderYearlyHeatmap(filter) {
 
       dot.style.backgroundColor = bg;
 
-      // Tooltip handling
-      const labelText = `${dKey}: ${hours.toFixed(1)}時間`;
+      const thisLoopDate = new Date(currentLoopDate);
+      const labelText = `${formatJapaneseDate(thisLoopDate)}: ${hours > 0 ? hours.toFixed(1) + '時間' : '記録なし'}`;
+
+      const updateSelectedInfo = () => {
+        document.querySelectorAll('.year-dot.active').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        const badge = document.getElementById('yearly-selected-text');
+        if (badge) {
+          badge.innerHTML = `<strong>${formatJapaneseDate(thisLoopDate)}</strong>: <span style="font-weight:700;color:#2563eb;">${hours > 0 ? hours.toFixed(1) + '時間' : '記録なし'}</span> <span style="color:#64748b;margin-left:4px;font-size:0.65rem;">(タップで移動)</span>`;
+        }
+      };
+
       dot.addEventListener('mouseenter', (e) => {
+        updateSelectedInfo();
         tooltip.textContent = labelText;
         tooltip.style.display = 'block';
         tooltip.style.left = `${e.clientX + 10}px`;
@@ -2793,11 +3149,12 @@ function renderYearlyHeatmap(filter) {
         tooltip.style.display = 'none';
       });
 
-      const clickedDate = new Date(currentLoopDate);
       dot.addEventListener('click', () => {
-        state.currentDate = clickedDate;
+        updateSelectedInfo();
+        state.currentDate = thisLoopDate;
         switchScreen('screen-timeline');
         renderTimeline();
+        showToast(`${formatJapaneseDate(thisLoopDate)} を表示しました`, '📅');
       });
 
       col.appendChild(dot);
@@ -2807,10 +3164,25 @@ function renderYearlyHeatmap(filter) {
     scrollContainer.appendChild(col);
   }
 
-  // Scroll to the latest end (today)
-  setTimeout(() => {
-    scrollContainer.scrollLeft = scrollContainer.scrollWidth;
-  }, 10);
+  // Update summary statistics in subview-year
+  const avg = totalLoggedDays > 0 ? (totalHours / totalLoggedDays).toFixed(1) : '0.0';
+  const statsSummary = document.getElementById('yearly-stats-summary');
+  if (statsSummary) {
+    statsSummary.innerHTML = `
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${totalLoggedDays}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">日</span></div>
+        <div class="yearly-stat-lbl">記録日数</div>
+      </div>
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${totalHours.toFixed(1)}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">h</span></div>
+        <div class="yearly-stat-lbl">年間合計</div>
+      </div>
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${avg}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">h</span></div>
+        <div class="yearly-stat-lbl">1日平均</div>
+      </div>
+    `;
+  }
 }
 
 // Navigation Screen Switching
@@ -2936,6 +3308,164 @@ function initEventListeners() {
     state.reportMonth.setMonth(state.reportMonth.getMonth() + 1);
     renderMonthlyCalendar(state.activeReportFilter);
   });
+
+  // Backup & Restore Buttons
+  document.getElementById('btn-export-json').addEventListener('click', exportDataAsJSON);
+  document.getElementById('btn-import-json').addEventListener('click', () => {
+    document.getElementById('json-file-input').click();
+  });
+  document.getElementById('json-file-input').addEventListener('change', handleJSONFileSelect);
+
+  // Import Modal Choice Buttons
+  document.getElementById('import-modal-close-btn').addEventListener('click', closeImportModal);
+  document.getElementById('btn-import-cancel').addEventListener('click', closeImportModal);
+  document.getElementById('btn-import-merge').addEventListener('click', () => applyImport('merge'));
+  document.getElementById('btn-import-overwrite').addEventListener('click', () => applyImport('overwrite'));
+
+  // Import Modal backdrop click
+  document.getElementById('import-modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'import-modal-backdrop') closeImportModal();
+  });
+}
+
+// Backup & Restore Logic
+let pendingImportData = null;
+
+function updateBackupDataCount() {
+  const badge = document.getElementById('backup-data-count');
+  if (!badge) return;
+  const daysCount = Object.keys(state.events || {}).filter(k => (state.events[k] || []).length > 0).length;
+  badge.textContent = `${daysCount}日分記録中`;
+}
+
+function exportDataAsJSON() {
+  const exportObj = {
+    app: 'time-visualizer',
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    targetSleepHours: state.targetSleepHours,
+    events: state.events
+  };
+
+  const jsonStr = JSON.stringify(exportObj, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const now = new Date();
+  const dateStr = formatDateKey(now).replace(/-/g, '');
+  const fileName = `time-visualizer-backup-${dateStr}.json`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('バックアップを保存しました', '💾');
+}
+
+function handleJSONFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const data = JSON.parse(event.target.result);
+      if (!data || typeof data !== 'object') throw new Error('不正なJSON形式です');
+      
+      let eventsData = null;
+      let targetSleep = null;
+      let exportDateStr = '不明';
+
+      if (data.events && typeof data.events === 'object') {
+        eventsData = data.events;
+        targetSleep = data.targetSleepHours || state.targetSleepHours;
+        if (data.exportedAt) {
+          const d = new Date(data.exportedAt);
+          exportDateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+      } else {
+        // Direct events key-value format fallback
+        eventsData = data;
+      }
+
+      const daysCount = Object.keys(eventsData).length;
+      let totalEvents = 0;
+      Object.values(eventsData).forEach(arr => {
+        if (Array.isArray(arr)) totalEvents += arr.length;
+      });
+
+      if (daysCount === 0 || totalEvents === 0) {
+        showToast('ファイル内に記録データが見つかりません', '⚠️');
+        return;
+      }
+
+      pendingImportData = {
+        events: eventsData,
+        targetSleepHours: targetSleep
+      };
+
+      const previewElem = document.getElementById('import-preview-info');
+      previewElem.innerHTML = `
+        <div><strong>ファイル名:</strong> ${escapeHtml(file.name)}</div>
+        <div><strong>バックアップ日時:</strong> ${exportDateStr}</div>
+        <div><strong>データ量:</strong> ${daysCount} 日分 (${totalEvents} 件の行動記録)</div>
+        ${targetSleep ? `<div><strong>目標睡眠時間:</strong> ${targetSleep} 時間</div>` : ''}
+      `;
+
+      document.getElementById('import-modal-backdrop').classList.add('show');
+    } catch (err) {
+      console.error(err);
+      showToast('ファイルの読み込みに失敗しました（JSONが無効です）', '⚠️');
+    } finally {
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]);
+}
+
+function closeImportModal() {
+  document.getElementById('import-modal-backdrop').classList.remove('show');
+  pendingImportData = null;
+}
+
+function applyImport(mode) {
+  if (!pendingImportData) return;
+
+  if (mode === 'overwrite') {
+    state.events = JSON.parse(JSON.stringify(pendingImportData.events));
+    if (pendingImportData.targetSleepHours) {
+      state.targetSleepHours = pendingImportData.targetSleepHours;
+    }
+  } else if (mode === 'merge') {
+    const newEvents = JSON.parse(JSON.stringify(pendingImportData.events));
+    Object.keys(newEvents).forEach(dayKey => {
+      state.events[dayKey] = newEvents[dayKey];
+    });
+    if (pendingImportData.targetSleepHours) {
+      state.targetSleepHours = pendingImportData.targetSleepHours;
+    }
+  }
+
+  saveState();
+  closeImportModal();
+
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+
+  if (mode === 'overwrite') {
+    showToast('データを完全上書きで復元しました', '✓');
+  } else {
+    showToast('既存データと統合して復元しました', '🤝');
+  }
 }
 
 // PWA Service Worker Registration using Data/Blob URL for true standalone single-file functionality
@@ -2970,14 +3500,6 @@ window.addEventListener('DOMContentLoaded', () => {
   initServiceWorker();
 
   renderTimeline();
-
-  // Scroll to roughly 7:00 AM for quick natural view
-  setTimeout(() => {
-    const timelineScroll = document.querySelector('#screen-timeline');
-    if (timelineScroll) {
-      timelineScroll.scrollTop = 7 * 52 - 20; // 7:00 AM position
-    }
-  }, 100);
 });
 </script>
 
