@@ -1,0 +1,3831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Time Visualizer">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="24時間バーチカルスケジュールで行動を可視化し、睡眠不足解消と自由時間捻出をサポートするPWAアプリ">
+  <title>Time Visualizer</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/mobile/manifest.json">
+  
+  <!-- Favicon & Apple Touch Icon -->
+  <link rel="icon" type="image/jpeg" href="/icons/icon.jpg">
+  <link rel="apple-touch-icon" href="/icons/icon.jpg">
+
+  <style>
+    /* CSS Reset & Variables */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --border-light: #f1f5f9;
+
+      /* PC Dashboard Harmonized Palette (7 Categories) */
+      --color-sleep-bg: #BAE6FD;
+      --color-sleep-text: #0369A1;
+      --color-sleep-border: #7DD3FC;
+      --color-sleep-accent: #0284C7;
+
+      --color-life-bg: #BBF7D0;
+      --color-life-text: #15803D;
+      --color-life-border: #86EFAC;
+      --color-life-accent: #16A34A;
+
+      --color-meal-bg: #FED7AA;
+      --color-meal-text: #C2410C;
+      --color-meal-border: #FDBA74;
+      --color-meal-accent: #EA580C;
+
+      --color-work-bg: #E2E8F0;
+      --color-work-text: #334155;
+      --color-work-border: #CBD5E1;
+      --color-work-accent: #64748B;
+
+      --color-hobby-bg: #FBCFE8;
+      --color-hobby-text: #BE185D;
+      --color-hobby-border: #F472B6;
+      --color-hobby-accent: #DB2777;
+
+      --color-net-bg: #E9D5FF;
+      --color-net-text: #7E22CE;
+      --color-net-border: #D8B4FE;
+      --color-net-accent: #9333EA;
+
+      --color-transport-bg: #FEF9C3;
+      --color-transport-text: #854D0E;
+      --color-transport-border: #FEF08A;
+      --color-transport-accent: #CA8A04;
+
+      /* Legacy compatibility alias */
+      --color-free-bg: #FBCFE8;
+      --color-free-text: #BE185D;
+      --color-free-border: #F472B6;
+      --color-free-accent: #DB2777;
+
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 14px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+
+      --hour-height: 40px; /* 1 hour height in timeline (compact 40px) */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "BIZ UDPGothic", Meiryo, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app-container {
+      width: 100%;
+      max-width: 480px;
+      height: 100dvh;
+      max-height: 100dvh;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 0 35px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    /* Top App Header */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-light);
+      padding: 12px 16px 8px;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .brand-title h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #eff6ff;
+      color: #3b82f6;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      border: 1px solid #dbeafe;
+    }
+
+    /* Screen Views */
+    .screen-view {
+      display: none;
+      flex: 1;
+      padding-bottom: 90px; /* space for bottom nav */
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen-view.active {
+      display: block;
+    }
+
+    /* Screen 1 Timeline & Screen 3 Reports are strictly 1-page fit (no page scroll) */
+    #screen-timeline,
+    #screen-reports {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden !important;
+      padding-bottom: 70px;
+      flex-direction: column;
+    }
+
+    #screen-timeline.active,
+    #screen-reports.active {
+      display: flex;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      z-index: 50;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-sub);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .nav-item.active {
+      color: #2563eb;
+    }
+
+    .nav-item.active svg {
+      transform: translateY(-2px);
+    }
+
+    .nav-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: 2px;
+      width: 16px;
+      height: 3px;
+      background-color: #2563eb;
+      border-radius: var(--radius-full);
+    }
+
+    /* Common Card Styles */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin: 10px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Date Navigation Bar */
+    .date-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .date-btn {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: var(--radius-sm);
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+
+    .date-btn:active {
+      background: #e2e8f0;
+    }
+
+    .current-date-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .current-date-text {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .date-picker-hidden {
+      position: absolute;
+      opacity: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .today-jump-btn {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+
+    /* Summary Metric Pills (Compact 2/3 size) */
+    .metrics-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin: 4px 10px 2px;
+      flex-shrink: 0;
+    }
+
+    .metric-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .metric-pill.sleep-pill {
+      border-left: 3px solid var(--color-sleep-accent);
+      background: linear-gradient(135deg, #ffffff 65%, #eff6ff 100%);
+    }
+
+    .metric-pill.free-pill {
+      border-left: 3px solid var(--color-free-accent);
+      background: linear-gradient(135deg, #ffffff 65%, #fdf2f8 100%);
+    }
+
+    .metric-info h3 {
+      font-size: 0.62rem;
+      color: var(--text-sub);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+    }
+
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      margin-top: 1px;
+    }
+
+    .metric-hours {
+      font-size: 0.98rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+      line-height: 1.1;
+    }
+
+    .metric-unit {
+      font-size: 0.65rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .metric-status-badge {
+      font-size: 0.58rem;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: var(--radius-full);
+      margin-left: 3px;
+    }
+
+    .badge-good {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-warn {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Action Shortcuts Bar (Compact 2/3 size) */
+    .shortcuts-bar {
+      display: flex;
+      gap: 5px;
+      padding: 2px 10px 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+
+    .shortcuts-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .shortcut-btn {
+      white-space: nowrap;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-full);
+      padding: 3px 8px;
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s;
+    }
+
+    .shortcut-btn:active {
+      transform: scale(0.97);
+      background: #f8fafc;
+    }
+
+    .shortcut-btn.primary {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* 24h Vertical Timeline (1-page fit, no scroll) */
+    .timeline-container {
+      position: relative;
+      margin: 2px 10px 6px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .timeline-header-hint {
+      padding: 4px 10px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 0.65rem;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .timeline-scroll-area {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Hour row grid (24 equal percentage slices) */
+    .hour-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: calc(100% / 24);
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .hour-label {
+      width: 44px;
+      padding-right: 6px;
+      font-size: 0.56rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-align: right;
+      transform: translateY(-50%);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .timeline-click-layer {
+      position: absolute;
+      left: 44px;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .timeline-events-layer {
+      position: absolute;
+      left: 46px;
+      right: 6px;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .timeline-event-block {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-radius: 4px;
+      padding: 0 4px;
+      pointer-events: auto;
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: 0.63rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      transition: transform 0.1s, box-shadow 0.15s;
+      box-sizing: border-box;
+    }
+
+    .timeline-event-block:active {
+      transform: scale(0.985);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .event-title-single {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+      line-height: 1;
+    }
+
+    /* Current time indicator line */
+    .current-time-line {
+      position: absolute;
+      left: 38px;
+      right: 0;
+      height: 2px;
+      background: #ef4444;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .current-time-line::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: -3px;
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
+      border-radius: 50%;
+    }
+
+    /* Drag / Selection indicator */
+    .timeline-selection-preview {
+      position: absolute;
+      left: 46px;
+      right: 6px;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1.5px dashed #3b82f6;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    /* Category Specific Styles defined in spec (PC Dashboard Aligned) */
+    .cat-sleep {
+      background-color: var(--color-sleep-bg) !important;
+      color: var(--color-sleep-text) !important;
+      border-color: var(--color-sleep-border) !important;
+    }
+    .cat-life {
+      background-color: var(--color-life-bg) !important;
+      color: var(--color-life-text) !important;
+      border-color: var(--color-life-border) !important;
+    }
+    .cat-meal {
+      background-color: var(--color-meal-bg) !important;
+      color: var(--color-meal-text) !important;
+      border-color: var(--color-meal-border) !important;
+    }
+    .cat-work {
+      background-color: var(--color-work-bg) !important;
+      color: var(--color-work-text) !important;
+      border-color: var(--color-work-border) !important;
+    }
+    .cat-hobby {
+      background-color: var(--color-hobby-bg) !important;
+      color: var(--color-hobby-text) !important;
+      border-color: var(--color-hobby-border) !important;
+    }
+    .cat-net {
+      background-color: var(--color-net-bg) !important;
+      color: var(--color-net-text) !important;
+      border-color: var(--color-net-border) !important;
+    }
+    .cat-transport {
+      background-color: var(--color-transport-bg) !important;
+      color: var(--color-transport-text) !important;
+      border-color: var(--color-transport-border) !important;
+    }
+    /* Legacy free alias */
+    .cat-free {
+      background-color: var(--color-hobby-bg) !important;
+      color: var(--color-hobby-text) !important;
+      border-color: var(--color-hobby-border) !important;
+    }
+
+    /* Modal Sheet (Mobile Bottom-Sheet style) */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      border-radius: 22px 22px 0 0;
+      padding: 16px 20px calc(24px + env(safe-area-inset-bottom));
+      box-shadow: var(--shadow-lg);
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: var(--radius-full);
+      margin: 0 auto 12px;
+    }
+
+    .modal-sheet-header h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .modal-close-btn {
+      background: #f1f5f9;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-sub);
+    }
+
+    .time-selector-group {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-main);
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    .time-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .time-field label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .time-field input {
+      font-size: 1.15rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      color: var(--text-main);
+      font-family: inherit;
+    }
+
+    .time-duration-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid #bfdbfe;
+      white-space: nowrap;
+    }
+
+    .category-selection-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quick-hint {
+      font-size: 0.65rem;
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .main-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .cat-select-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 4px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .cat-select-btn .cat-icon {
+      font-size: 1.25rem;
+      margin-bottom: 2px;
+    }
+
+    .cat-select-btn .cat-text {
+      font-size: 0.70rem;
+      font-weight: 700;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      max-width: 100%;
+    }
+
+    .cat-select-btn.selected {
+      transform: scale(1.03);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+      outline: 2px solid #0f172a;
+    }
+
+    /* Memo Preset Quick Chips */
+    .memo-presets-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      max-height: 80px;
+      overflow-y: auto;
+      padding: 2px 0;
+    }
+
+    .memo-preset-chip {
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      padding: 4px 9px;
+      border-radius: var(--radius-full);
+      font-size: 0.70rem;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.12s;
+      user-select: none;
+    }
+
+    .memo-preset-chip:active, .memo-preset-chip.selected {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .memo-preset-chip.add-chip {
+      background: #eff6ff;
+      border: 1px dashed #3b82f6;
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .memo-preset-chip.add-chip:hover {
+      background: #dbeafe;
+    }
+
+    .memo-preset-chip.custom-chip {
+      border-style: dashed;
+    }
+
+    .memo-input {
+      width: 100%;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      font-family: inherit;
+    }
+
+    .modal-actions-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+
+    .modal-btn:active {
+      opacity: 0.85;
+    }
+
+    .btn-save {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #b91c1c;
+      flex: 0 0 70px;
+    }
+
+    /* Screen 2: Sleep Analysis Screen */
+    .analysis-header {
+      padding: 16px 16px 8px;
+    }
+
+    .analysis-header h2 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .analysis-header p {
+      font-size: 0.76rem;
+      color: var(--text-sub);
+    }
+
+    /* Target Setting Bar */
+    .target-sleep-setting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin: 4px 16px 12px;
+    }
+
+    .target-sleep-setting span {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1e40af;
+    }
+
+    .stepper-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stepper-btn {
+      background: #ffffff;
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .stepper-val {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1e40af;
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* Circular Progress Ring Card */
+    .ring-card {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+    }
+
+    .ring-svg-wrap {
+      position: relative;
+      width: 170px;
+      height: 170px;
+      margin: 8px 0;
+    }
+
+    .ring-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .ring-circle-bg {
+      fill: none;
+      stroke: #f1f5f9;
+      stroke-width: 12;
+    }
+
+    .ring-circle-bar {
+      fill: none;
+      stroke: #3b82f6;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .ring-inner-content {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-percent {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .ring-subtext {
+      font-size: 0.72rem;
+      color: var(--text-sub);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Sleep Debt Card */
+    .debt-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin: 12px 16px;
+    }
+
+    .debt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .debt-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .debt-status-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    .debt-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0 8px;
+      text-align: center;
+    }
+
+    .debt-stat-box {
+      background: #ffffff;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .debt-stat-label {
+      font-size: 0.65rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .debt-stat-num {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-top: 2px;
+      color: var(--text-main);
+    }
+
+    .debt-advice {
+      font-size: 0.74rem;
+      color: var(--text-sub);
+      line-height: 1.4;
+      background: #eff6ff;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid #3b82f6;
+      margin-top: 10px;
+    }
+
+    /* Bedtime & Wakeup Consistency Chart */
+    .chart-card {
+      margin: 12px 16px;
+    }
+
+    .chart-card h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .chart-sub-note {
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+    }
+
+    .consistency-chart-container {
+      position: relative;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 8px;
+    }
+
+    .chart-row-day {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+    }
+
+    .chart-day-label {
+      width: 50px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-align: right;
+      padding-right: 8px;
+      font-size: 0.68rem;
+    }
+
+    .chart-bar-track {
+      flex: 1;
+      height: 22px;
+      background: #f1f5f9;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-sleep-bar {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      background: var(--color-sleep-bg);
+      border: 1px solid var(--color-sleep-border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: var(--color-sleep-text);
+      white-space: nowrap;
+    }
+
+    .chart-time-ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-left: 50px;
+      padding-top: 4px;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Screen 3: Heatmap Reports */
+    #screen-reports .analysis-header {
+      padding: 10px 16px 2px;
+      flex: 0 0 auto;
+    }
+
+    #screen-reports .analysis-header h2 {
+      font-size: 1.02rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+
+    #screen-reports .analysis-header p {
+      font-size: 0.67rem;
+      color: var(--text-sub);
+    }
+
+    .report-tabs {
+      display: flex;
+      padding: 3px 16px 2px;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    .report-filter-btn {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: var(--radius-full);
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      font-size: 0.70rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .report-filter-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+
+    .report-view-segment {
+      display: flex;
+      margin: 4px 16px 6px;
+      background: #f1f5f9;
+      padding: 2.5px;
+      border-radius: var(--radius-md);
+      flex: 0 0 auto;
+    }
+
+    .report-subview-btn {
+      flex: 1;
+      padding: 5px 6px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      font-size: 0.70rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .report-subview-btn.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .report-subview-btn:disabled,
+    .report-subview-btn.disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+      background: transparent !important;
+      color: var(--text-sub) !important;
+      box-shadow: none !important;
+    }
+
+    /* 1. Weekly Matrix (7 days vertical x 24 hours horizontal) */
+    .weekly-matrix-card {
+      margin: 0 16px 6px;
+      padding: 8px 10px;
+      overflow-x: hidden;
+      flex: 0 0 auto;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 46px repeat(24, 1fr);
+      gap: 1.5px;
+      align-items: center;
+    }
+
+    .matrix-header-cell {
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-align: center;
+      padding-bottom: 2px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .matrix-day-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-align: left;
+      padding: 2px 2px;
+      cursor: pointer;
+      white-space: nowrap;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+
+    .matrix-day-label:hover, .matrix-day-label:active {
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .matrix-day-label.is-today {
+      color: #2563eb;
+      font-weight: 800;
+    }
+
+    .matrix-cell {
+      height: 14px;
+      border-radius: 2px;
+      background: #f8fafc;
+      cursor: pointer;
+      border: 0.5px solid #f1f5f9;
+      transition: transform 0.1s;
+    }
+
+    .matrix-cell:hover, .matrix-cell:active {
+      transform: scale(1.2);
+      z-index: 5;
+    }
+
+    /* 2. Monthly Heatmap Calendar (1-page fit, no vertical scroll) */
+    .month-calendar-wrap {
+      margin: 0 16px 2px;
+      padding: 8px 10px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      flex: 0 0 auto;
+    }
+
+    .month-nav-title {
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .month-cal-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2.5px;
+      text-align: center;
+    }
+
+    .cal-day-header {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-bottom: 2px;
+    }
+
+    .cal-day-cell {
+      height: 100%;
+      min-height: 0;
+      border-radius: 5px;
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      cursor: pointer;
+      position: relative;
+      padding: 1px 0;
+      line-height: 1.1;
+    }
+
+    .cal-day-blank {
+      height: 100%;
+    }
+
+    .cal-day-num {
+      font-size: 0.62rem;
+      color: var(--text-sub);
+    }
+
+    .cal-day-val {
+      font-size: 0.60rem;
+      font-weight: 800;
+      margin-top: 1px;
+    }
+
+    /* 3. Yearly Heatmap (GitHub style 365 days, 100% width, no horizontal scroll) */
+    .yearly-heatmap-wrap {
+      margin: 0 16px 2px;
+      padding: 10px 12px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .yearly-header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      flex: 0 0 auto;
+    }
+
+    .yearly-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .yearly-legend {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.62rem;
+      color: var(--text-sub);
+    }
+
+    .legend-box {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+    }
+
+    .year-grid-scroll {
+      display: flex;
+      gap: 1.5px;
+      width: 100%;
+      padding-bottom: 4px;
+      flex: 0 0 auto;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .year-col-week {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5px;
+    }
+
+    .year-dot {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 1.5px;
+      background: #f1f5f9;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .year-dot:hover, .year-dot.active {
+      transform: scale(2.2);
+      z-index: 10;
+      box-shadow: 0 0 5px rgba(0,0,0,0.35);
+    }
+
+    .yearly-interactive-panel {
+      margin-top: 8px;
+      flex: 0 0 auto;
+    }
+
+    .yearly-selected-badge {
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 0.70rem;
+      color: var(--text-sub);
+      text-align: center;
+      font-weight: 600;
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .yearly-stats-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+      flex: 0 0 auto;
+    }
+
+    .yearly-stat-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 6px 4px;
+      text-align: center;
+    }
+
+    .yearly-stat-val {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .yearly-stat-lbl {
+      font-size: 0.60rem;
+      color: var(--text-sub);
+      margin-top: 1px;
+    }
+
+    /* 4. Backup & Data Management Card */
+    .backup-card {
+      margin: 0 16px 2px;
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      flex: 0 0 auto;
+    }
+
+    .backup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .backup-title {
+      font-size: 0.80rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .backup-count-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #eff6ff;
+      color: #2563eb;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      border: 1px solid #bfdbfe;
+    }
+
+    .backup-desc {
+      font-size: 0.68rem;
+      color: var(--text-sub);
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .backup-actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .backup-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .backup-btn:active {
+      transform: scale(0.98);
+    }
+
+    .backup-btn.export-btn {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .backup-btn.import-btn {
+      background: #ffffff;
+      color: var(--text-main);
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-30px);
+      background: #0f172a;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* Tooltip / Details Popover */
+    .tooltip-popover {
+      position: fixed;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 150;
+      display: none;
+      box-shadow: var(--shadow-md);
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- Top Fixed Header -->
+  <header class="app-header">
+    <div class="brand-title">
+      <h1>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Time Visualizer
+      </h1>
+      <span class="brand-badge">PWA Ready</span>
+    </div>
+
+    <!-- Date selector & Nav for timeline (dynamically updated) -->
+    <div id="header-timeline-controls">
+      <div class="date-nav-bar">
+        <button class="date-btn" id="prev-date-btn" aria-label="前日">◀</button>
+        <div class="current-date-wrap">
+          <span class="current-date-text" id="display-date-text">2026年10月20日 (火)</span>
+          <input type="date" id="date-picker-input" class="date-picker-hidden">
+        </div>
+        <button class="date-btn" id="next-date-btn" aria-label="翌日">▶</button>
+        <button class="today-jump-btn" id="jump-today-btn">今日</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SCREEN 1: TIMELINE (MAIN) -->
+  <main id="screen-timeline" class="screen-view active">
+    
+    <!-- Daily Summary Cards -->
+    <section class="metrics-summary-grid">
+      <div class="metric-pill sleep-pill">
+        <div class="metric-info">
+          <h3>睡眠サマリー</h3>
+          <div class="metric-value-row">
+            <span class="metric-hours" id="today-sleep-hours">0.0</span>
+            <span class="metric-unit">時間</span>
+            <span class="metric-status-badge badge-good" id="today-sleep-badge">適正</span>
+          </div>
+        </div>
+        <div style="font-size: 1.15rem;">🌙</div>
+      </div>
+
+      <div class="metric-pill free-pill">
+        <div class="metric-info">
+          <h3>自由時間サマリー</h3>
+          <div class="metric-value-row">
+            <span class="metric-hours" id="today-free-hours">0.0</span>
+            <span class="metric-unit">時間</span>
+            <span class="metric-status-badge badge-good" id="today-free-badge">確保</span>
+          </div>
+        </div>
+        <div style="font-size: 1.15rem;">✨</div>
+      </div>
+    </section>
+
+    <!-- Shortcut Templates Bar -->
+    <section class="shortcuts-bar">
+      <button class="shortcut-btn" id="btn-tpl-workday">
+        <span>💼</span> 平日テンプレート
+      </button>
+      <button class="shortcut-btn" id="btn-tpl-holiday">
+        <span>🏖️</span> 休日テンプレート
+      </button>
+      <button class="shortcut-btn" id="btn-copy-yesterday">
+        <span>🔄</span> 昨日をコピー
+      </button>
+      <button class="shortcut-btn primary" id="btn-add-event-manual">
+        <span>➕</span> 予定を追加
+      </button>
+    </section>
+
+    <!-- 24-hour Vertical Timeline Container -->
+    <section class="timeline-container">
+      <div class="timeline-header-hint">
+        <span>24時間バーチカルタイムライン</span>
+        <span>タップまたはドラッグで登録</span>
+      </div>
+
+      <div class="timeline-scroll-area" id="timeline-scroll-area">
+        <!-- 24 hour grid lines generated dynamically -->
+        <div id="hour-rows-bg"></div>
+
+        <!-- Current time red line indicator -->
+        <div id="current-time-line" class="current-time-line" style="display:none;"></div>
+
+        <!-- Interactive Click & Drag Overlay Layer -->
+        <div class="timeline-click-layer" id="timeline-click-layer"></div>
+
+        <!-- Drag selection visual indicator -->
+        <div class="timeline-selection-preview" id="selection-preview"></div>
+
+        <!-- Event blocks layer -->
+        <div class="timeline-events-layer" id="timeline-events-layer"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SCREEN 2: SLEEP ANALYSIS -->
+  <main id="screen-sleep" class="screen-view">
+    <div class="analysis-header">
+      <h2>🌙 睡眠分析 & 負債トラッカー</h2>
+      <p>目標睡眠時間と体内時計の一貫性を保ち、パフォーマンスを最大化</p>
+    </div>
+
+    <!-- Target Sleep Setting Stepper -->
+    <div class="target-sleep-setting">
+      <span>🎯 目標睡眠時間</span>
+      <div class="stepper-wrap">
+        <button class="stepper-btn" id="btn-target-dec">−</button>
+        <span class="stepper-val" id="target-sleep-val">7.5h</span>
+        <button class="stepper-btn" id="btn-target-inc">＋</button>
+      </div>
+    </div>
+
+    <!-- Ring Progress Card -->
+    <div class="card ring-card">
+      <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">直近の目標達成率</div>
+      <div class="ring-svg-wrap">
+        <svg class="ring-svg" viewBox="0 0 120 120">
+          <circle class="ring-circle-bg" cx="60" cy="60" r="50"></circle>
+          <circle class="ring-circle-bar" id="sleep-ring-progress" cx="60" cy="60" r="50" stroke-dasharray="314.159" stroke-dashoffset="314.159"></circle>
+        </svg>
+        <div class="ring-inner-content">
+          <span class="ring-percent" id="sleep-ring-percent">0%</span>
+          <span class="ring-subtext" id="sleep-ring-detail">0.0h / 7.5h</span>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-sub);" id="sleep-ring-status-msg">
+        目標値に向けてしっかりと休養を取りましょう
+      </div>
+    </div>
+
+    <!-- Sleep Debt (Budget) Card -->
+    <div class="debt-card">
+      <div class="debt-header">
+        <span class="debt-title">
+          <span>📊</span> 直近7日間の睡眠負債（バジェット）
+        </span>
+        <span class="debt-status-tag" id="sleep-debt-badge">良好</span>
+      </div>
+
+      <div class="debt-stat-grid">
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">目標合計 (7日)</div>
+          <div class="debt-stat-num" id="debt-target-total">52.5h</div>
+        </div>
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">実績合計</div>
+          <div class="debt-stat-num" id="debt-actual-total">49.0h</div>
+        </div>
+        <div class="debt-stat-box">
+          <div class="debt-stat-label">睡眠負債</div>
+          <div class="debt-stat-num" id="debt-balance-diff">-3.5h</div>
+        </div>
+      </div>
+
+      <div class="debt-advice" id="sleep-debt-advice">
+        今週は3.5時間の不足が発生しています。今夜または休日に30分〜1時間早めの就寝を意識してください。
+      </div>
+    </div>
+
+    <!-- Sleep Consistency Chart Card -->
+    <div class="card chart-card">
+      <h3>就寝・起床リズムの安定性（直近7日間）</h3>
+      <div class="chart-sub-note">毎日の就寝時刻と起床時刻のブレを可視化（帯の横位置が時間帯）</div>
+      
+      <div class="consistency-chart-container" id="consistency-chart-rows">
+        <!-- Generated by JS -->
+      </div>
+      <div class="chart-time-ticks">
+        <span>0:00</span>
+        <span>4:00</span>
+        <span>8:00</span>
+        <span>12:00</span>
+        <span>16:00</span>
+        <span>20:00</span>
+        <span>24:00</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- SCREEN 3: REPORTS & HEATMAPS -->
+  <main id="screen-reports" class="screen-view">
+    <div class="analysis-header">
+      <h2>📊 集計レポート & ヒートマップ</h2>
+      <p>行動パターンの濃淡から時間の使い方とライフスタイルを分析</p>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="report-tabs">
+      <button class="report-filter-btn active" data-filter="sleep">🌙 睡眠時間</button>
+      <button class="report-filter-btn" data-filter="free">✨ 自由時間</button>
+      <button class="report-filter-btn" data-filter="all">🌈 全体 (行動)</button>
+    </div>
+
+    <!-- Subview Selector: Week / Month / Year -->
+    <div class="report-view-segment">
+      <button class="report-subview-btn active" data-subview="week">週間マトリックス</button>
+      <button class="report-subview-btn" data-subview="month">月間カレンダー</button>
+      <button class="report-subview-btn" data-subview="year">年間ヒートマップ</button>
+    </div>
+
+    <!-- VIEW 1: Weekly Matrix (7 days x 24 hours) -->
+    <div id="subview-week" class="card weekly-matrix-card">
+      <div style="font-size: 0.8rem; font-weight: 700; margin-bottom: 8px;" id="matrix-title">
+        直近7日間の24時間タイムマトリックス
+      </div>
+      <div class="matrix-grid" id="weekly-matrix-container">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: Monthly Calendar Heatmap -->
+    <div id="subview-month" class="card month-calendar-wrap" style="display: none;">
+      <div class="month-nav">
+        <button class="date-btn" id="prev-month-btn">◀</button>
+        <span class="month-nav-title" id="display-month-title">2026年10月</span>
+        <button class="date-btn" id="next-month-btn">▶</button>
+      </div>
+      <div class="month-cal-grid" id="month-calendar-grid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 3: Yearly Heatmap (GitHub style 365 days, 100% width, no horizontal scroll) -->
+    <div id="subview-year" class="card yearly-heatmap-wrap" style="display: none;">
+      <div class="yearly-header-info">
+        <span class="yearly-title" id="yearly-display-title">直近1年間の達成度</span>
+        <div class="yearly-legend" id="yearly-legend-container">
+          <span>少</span>
+          <div class="legend-box" style="background:#f1f5f9;"></div>
+          <div class="legend-box" style="background:#bfdbfe;"></div>
+          <div class="legend-box" style="background:#60a5fa;"></div>
+          <div class="legend-box" style="background:#2563eb;"></div>
+          <span>多</span>
+        </div>
+      </div>
+      <div class="year-grid-scroll" id="yearly-heatmap-scroll">
+        <!-- 52 columns x 7 rows rendered by JS -->
+      </div>
+      <div class="yearly-interactive-panel" id="yearly-interactive-panel">
+        <div class="yearly-selected-badge" id="yearly-selected-text">
+          <span>👆 マスをタップすると日付と実績時間が表示されます</span>
+        </div>
+      </div>
+      <div class="yearly-stats-summary" id="yearly-stats-summary">
+        <!-- Populated by JS: 記録日数, 年間合計, 1日平均 -->
+      </div>
+    </div>
+
+    <!-- VIEW 4: Backup & Data Management Card -->
+    <div class="card backup-card" id="reports-backup-card">
+      <div class="backup-header">
+        <span class="backup-title">
+          <span>💾</span> データ管理 & バックアップ
+        </span>
+        <span class="backup-count-badge" id="backup-data-count">0日分</span>
+      </div>
+      <p class="backup-desc">
+        端末変更やデータ保全のために、スケジュール全記録と目標設定をJSONファイルとして保存・復元できます。
+      </p>
+      <div class="backup-actions-row">
+        <button class="backup-btn export-btn" id="btn-export-json">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          JSONエクスポート
+        </button>
+        <button class="backup-btn import-btn" id="btn-import-json">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          JSONインポート
+        </button>
+        <input type="file" id="json-file-input" accept=".json" style="display: none;">
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-screen="screen-timeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      タイムライン
+    </button>
+    <button class="nav-item" data-screen="screen-sleep">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      睡眠分析
+    </button>
+    <button class="nav-item" data-screen="screen-reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      レポート
+    </button>
+  </nav>
+
+  <!-- Event Edit & Create Modal Sheet -->
+  <div class="modal-backdrop" id="event-modal-backdrop">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      
+      <div class="modal-sheet-header">
+        <h2 id="modal-heading">行動を記録</h2>
+        <button class="modal-close-btn" id="modal-close-btn" aria-label="閉じる">✕</button>
+      </div>
+
+      <!-- Time Selector Inputs -->
+      <div class="time-selector-group">
+        <div class="time-field">
+          <label>開始時刻</label>
+          <input type="time" id="modal-start-time" step="900" value="09:00">
+        </div>
+        <div style="font-weight: 700; color: var(--text-muted); text-align: center;">〜</div>
+        <div class="time-field">
+          <label>終了時刻</label>
+          <input type="time" id="modal-end-time" step="900" value="10:00">
+        </div>
+      </div>
+      <div style="text-align: right; margin-top: -10px; margin-bottom: 14px;">
+        <span class="time-duration-badge" id="modal-duration-badge">所要時間: 1.0時間</span>
+      </div>
+
+      <!-- Major Categories Selection (7 Categories) -->
+      <div class="category-selection-label">
+        <span>大カテゴリを選択</span>
+        <span class="quick-hint">タップで選択</span>
+      </div>
+      <div class="main-cat-grid" id="modal-cat-grid">
+        <!-- Category Buttons Rendered via JS -->
+      </div>
+
+      <!-- Memo (Optional) & Preset Quick Chips -->
+      <div class="category-selection-label">
+        <span>ラベル・メモ (任意)</span>
+        <span class="quick-hint">候補チップで1タップ入力</span>
+      </div>
+      <input type="text" id="modal-memo-input" class="memo-input" placeholder="例: 深い睡眠、読書">
+      <div class="memo-presets-grid" id="modal-memo-presets">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="modal-actions-row">
+        <button class="modal-btn btn-delete" id="modal-delete-btn" style="display: none;">削除</button>
+        <button class="modal-btn btn-save" id="modal-save-btn">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Choice Modal Sheet -->
+  <div class="modal-backdrop" id="import-modal-backdrop">
+    <div class="modal-sheet" style="max-width: 440px;">
+      <div class="modal-handle"></div>
+      <div class="modal-sheet-header">
+        <h2>バックアップの復元</h2>
+        <button class="modal-close-btn" id="import-modal-close-btn" aria-label="閉じる">✕</button>
+      </div>
+      <div id="import-preview-info" style="font-size: 0.78rem; color: var(--text-sub); margin-bottom: 14px; background: #f8fafc; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); line-height: 1.5;">
+        <!-- Injected by JS -->
+      </div>
+      <p style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">復元方法を選択してください：</p>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+        <button class="modal-btn" id="btn-import-merge" style="background: #eff6ff; color: #1e40af; border: 1.5px solid #bfdbfe; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+          <span style="font-size: 0.85rem; font-weight: 800;">🤝 統合（マージ）</span>
+          <span style="font-size: 0.7rem; color: #3b82f6; font-weight: 600;">既存のデータを残したまま、バックアップ内の予定を追加・更新します</span>
+        </button>
+        <button class="modal-btn" id="btn-import-overwrite" style="background: #fef2f2; color: #991b1b; border: 1.5px solid #fecaca; text-align: left; padding: 10px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+          <span style="font-size: 0.85rem; font-weight: 800;">⚠️ 完全上書き</span>
+          <span style="font-size: 0.7rem; color: #dc2626; font-weight: 600;">現在のデータをすべて消去し、バックアップの内容で置き換えます</span>
+        </button>
+      </div>
+      <button class="modal-btn" id="btn-import-cancel" style="background: #f1f5f9; color: var(--text-sub); font-size: 0.8rem; padding: 9px;">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- Toast Message -->
+  <div class="toast" id="app-toast">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">完了しました</span>
+  </div>
+
+  <!-- Tooltip Popover -->
+  <div class="tooltip-popover" id="app-tooltip"></div>
+
+</div>
+
+<script>
+/**
+ * TIME VISUALIZER - PWA Vanilla JS Application
+ * Fully self-contained logic: State, Storage, Vertical Timeline, Sleep Debt Analysis, Heatmaps
+ */
+
+// Category Specification (7 Categories Harmonized with PC Dashboard)
+const CATEGORIES = {
+  sleep: {
+    id: 'sleep',
+    label: '睡眠',
+    bg: '#BAE6FD',
+    text: '#0369A1',
+    border: '#7DD3FC',
+    accent: '#0284C7',
+    icon: '🛌',
+    isFree: false
+  },
+  life: {
+    id: 'life',
+    label: '生活・家事',
+    bg: '#BBF7D0',
+    text: '#15803D',
+    border: '#86EFAC',
+    accent: '#16A34A',
+    icon: '🌿',
+    isFree: false
+  },
+  meal: {
+    id: 'meal',
+    label: '食事',
+    bg: '#FED7AA',
+    text: '#C2410C',
+    border: '#FDBA74',
+    accent: '#EA580C',
+    icon: '🍱',
+    isFree: false
+  },
+  work: {
+    id: 'work',
+    label: '仕事・勉強',
+    bg: '#E2E8F0',
+    text: '#334155',
+    border: '#CBD5E1',
+    accent: '#64748B',
+    icon: '💼',
+    isFree: false
+  },
+  hobby: {
+    id: 'hobby',
+    label: '趣味・リラックス',
+    bg: '#FBCFE8',
+    text: '#BE185D',
+    border: '#F472B6',
+    accent: '#DB2777',
+    icon: '🎨',
+    isFree: true
+  },
+  net: {
+    id: 'net',
+    label: 'ネット・SNS',
+    bg: '#E9D5FF',
+    text: '#7E22CE',
+    border: '#D8B4FE',
+    accent: '#9333EA',
+    icon: '📱',
+    isFree: true
+  },
+  transport: {
+    id: 'transport',
+    label: '移動',
+    bg: '#FEF9C3',
+    text: '#854D0E',
+    border: '#FEF08A',
+    accent: '#CA8A04',
+    icon: '🚆',
+    isFree: false
+  }
+};
+
+// Aliases for compatibility
+CATEGORIES.free = CATEGORIES.hobby;
+CATEGORIES.travel = CATEGORIES.transport;
+Object.values(CATEGORIES).forEach(c => {
+  c.name = c.label; // name alias so code accessing .name works seamlessly
+});
+
+// PC Dashboard Harmonized Preset Label Chips
+const CATEGORY_PRESET_CHIPS = {
+  sleep: ['深い睡眠', '快眠', '早めの就寝', '昼寝', '就寝準備'],
+  life: ['身支度', '入浴', '掃除', '洗濯', '買い物'],
+  meal: ['朝食', '昼食・休憩', '夕食', '外食'],
+  work: ['業務', '会議・面談', '残業', '出張', '勉強・自己投資'],
+  hobby: ['読書', '散歩', '運動', 'クリエイティブ制作', '旅行・外出', 'ドライブ'],
+  net: ['動画視聴', 'SNS・情報収集'],
+  transport: ['通勤', 'その他']
+};
+
+// Application State (PC Dashboard appData Schema)
+const state = {
+  currentDate: new Date(), // Selected date
+  targetSleepHours: 7.5,
+  appData: {}, // Schema: { [dateStr]: { score: 3, note: '', blocks: [ { id, start: 'HH:MM', end: 'HH:MM', category, title } ] } }
+  editingEventId: null, // null if creating
+  activeReportFilter: 'sleep', // 'sleep', 'free', 'all'
+  activeReportSubview: 'week', // 'week', 'month', 'year'
+  reportMonth: new Date()
+};
+
+// Helper: Get blocks array for a given date key ('YYYY-MM-DD')
+function getDayBlocks(dateKey) {
+  const day = state.appData[dateKey];
+  if (!day) return [];
+  if (Array.isArray(day)) return day;
+  return day.blocks || [];
+}
+
+// Helper: Set blocks array for a given date key
+function setDayBlocks(dateKey, blocks) {
+  if (!state.appData[dateKey]) {
+    state.appData[dateKey] = { score: 3, note: '', blocks: [] };
+  } else if (Array.isArray(state.appData[dateKey])) {
+    state.appData[dateKey] = { score: 3, note: '', blocks: state.appData[dateKey] };
+  }
+  state.appData[dateKey].blocks = blocks;
+}
+
+// Transparent compatibility layer: state.events[dateKey] maps directly to getDayBlocks(dateKey)
+Object.defineProperty(state, 'events', {
+  get() {
+    const evMap = {};
+    for (const key of Object.keys(state.appData)) {
+      evMap[key] = getDayBlocks(key);
+    }
+    return evMap;
+  },
+  set(val) {
+    if (val && typeof val === 'object') {
+      for (const [k, v] of Object.entries(val)) {
+        if (v && v.blocks) {
+          state.appData[k] = v;
+        } else if (Array.isArray(v)) {
+          setDayBlocks(k, v);
+        }
+      }
+    }
+  }
+});
+
+// Utilities
+function formatDateKey(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(key) {
+  const parts = key.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function formatJapaneseDate(d) {
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 (${days[d.getDay()]})`;
+}
+
+// Universal Time Convertors (Supports both 'HH:MM' string and integer minutes)
+function timeToMinutes(t) {
+  if (typeof t === 'number') return t;
+  if (!t || typeof t !== 'string') return 0;
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function timeStringToMinutes(str) {
+  return timeToMinutes(str);
+}
+
+function minutesToTimeString(mins) {
+  if (typeof mins === 'string' && mins.includes(':')) return mins;
+  let h = Math.floor(mins / 60);
+  let m = Math.floor(mins % 60);
+  if (h >= 24) h = 24;
+  if (h === 24 && m > 0) m = 0;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function showToast(msg, icon = '✓') {
+  const toast = document.getElementById('app-toast');
+  const toastMsg = document.getElementById('toast-msg');
+  const toastIcon = document.getElementById('toast-icon');
+  toastMsg.textContent = msg;
+  toastIcon.textContent = icon;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2200);
+}
+
+// Normalizer for data interchange between PC Dashboard format and Mobile formats
+function normalizeBlock(b) {
+  const startStr = (typeof b.start === 'number') ? minutesToTimeString(b.start) : (b.start || '00:00');
+  const endStr = (typeof b.end === 'number') ? minutesToTimeString(b.end) : (b.end || '01:00');
+  let cat = b.category || b.cat || 'work';
+  // Map legacy categories
+  if (cat === 'travel') cat = 'transport';
+  if (cat === 'free') cat = 'hobby';
+  const catDef = CATEGORIES[cat] || CATEGORIES.work;
+  const title = b.title || b.note || (b.subCat ? b.subCat : catDef.label);
+  const id = b.id || `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+  return { id, start: startStr, end: endStr, category: cat, title };
+}
+
+function normalizeToAppData(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const result = {};
+  const source = raw.appData || raw.events || raw;
+
+  for (const [dateKey, dayVal] of Object.entries(source)) {
+    if (!dayVal) continue;
+    if (dayVal.blocks && Array.isArray(dayVal.blocks)) {
+      result[dateKey] = {
+        score: dayVal.score || 3,
+        note: dayVal.note || '',
+        blocks: dayVal.blocks.map(normalizeBlock)
+      };
+    } else if (Array.isArray(dayVal)) {
+      result[dateKey] = {
+        score: 3,
+        note: '',
+        blocks: dayVal.map(normalizeBlock)
+      };
+    }
+  }
+  return result;
+}
+
+// LocalStorage Persistence (PC Dashboard Storage Key Compatibility)
+const STORAGE_KEY = 'time_visualizer_pc_dashboard_v1';
+const LEGACY_STORAGE_KEY = 'time_visualizer_data_v1';
+const STORAGE_TARGET_KEY = 'time_visualizer_target_sleep_v1';
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.appData));
+    localStorage.setItem(STORAGE_TARGET_KEY, JSON.stringify(state.targetSleepHours));
+  } catch (e) {
+    console.error('Storage save error:', e);
+  }
+}
+
+function loadState() {
+  try {
+    const savedTarget = localStorage.getItem(STORAGE_TARGET_KEY);
+    if (savedTarget) state.targetSleepHours = JSON.parse(savedTarget);
+
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) {
+      saved = localStorage.getItem(LEGACY_STORAGE_KEY);
+    }
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state.appData = normalizeToAppData(parsed);
+      return Object.keys(state.appData).length > 0;
+    }
+  } catch (e) {
+    console.error('Storage load error:', e);
+  }
+  return false;
+}
+
+// Generate Realistic Sample Data if empty (PC Dashboard Harmonized)
+function generateSampleData() {
+  const baseDate = new Date();
+  state.appData = {};
+
+  // Generate 14 days of realistic logs up to today
+  for (let i = 13; i >= 0; i--) {
+    const target = new Date(baseDate);
+    target.setDate(baseDate.getDate() - i);
+    const key = formatDateKey(target);
+    const dayOfWeek = target.getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+    const dayBlocks = [];
+
+    if (!isWeekend) {
+      // Workday routine
+      const wakeMins = (i % 3 === 0) ? 375 : (i % 2 === 0 ? 420 : 390);
+      const wakeStr = minutesToTimeString(wakeMins);
+      const readyEndStr = minutesToTimeString(wakeMins + 60);
+      const workStartStr = minutesToTimeString(wakeMins + 110);
+
+      dayBlocks.push(
+        { id: `samp_${key}_1`, start: '00:00', end: wakeStr, category: 'sleep', title: '睡眠' },
+        { id: `samp_${key}_2`, start: wakeStr, end: readyEndStr, category: 'life', title: '朝の身支度' },
+        { id: `samp_${key}_3`, start: readyEndStr, end: workStartStr, category: 'transport', title: '通勤・移動' },
+        { id: `samp_${key}_4`, start: workStartStr, end: '12:00', category: 'work', title: '午前の業務' },
+        { id: `samp_${key}_5`, start: '12:00', end: '13:00', category: 'meal', title: '昼食・休憩' },
+        { id: `samp_${key}_6`, start: '13:00', end: '18:00', category: 'work', title: '午後の業務' },
+        { id: `samp_${key}_7`, start: '18:00', end: '18:50', category: 'transport', title: '帰宅・移動' },
+        { id: `samp_${key}_8`, start: '18:50', end: '19:50', category: 'meal', title: '夕食' },
+        { id: `samp_${key}_9`, start: '19:50', end: '20:50', category: 'life', title: '入浴・ストレッチ' },
+        { id: `samp_${key}_10`, start: '20:50', end: '22:15', category: 'hobby', title: '読書・散歩' },
+        { id: `samp_${key}_11`, start: '22:15', end: '23:30', category: 'net', title: 'YouTube視聴' },
+        { id: `samp_${key}_12`, start: '23:30', end: '24:00', category: 'sleep', title: '就寝' }
+      );
+    } else {
+      // Weekend routine
+      dayBlocks.push(
+        { id: `samp_${key}_1`, start: '00:00', end: '07:30', category: 'sleep', title: '快眠' },
+        { id: `samp_${key}_2`, start: '07:30', end: '09:00', category: 'life', title: '朝の身支度・散歩' },
+        { id: `samp_${key}_3`, start: '09:00', end: '10:00', category: 'meal', title: '朝食' },
+        { id: `samp_${key}_4`, start: '10:00', end: '12:30', category: 'hobby', title: 'クリエイティブ制作' },
+        { id: `samp_${key}_5`, start: '12:30', end: '13:30', category: 'meal', title: '昼食' },
+        { id: `samp_${key}_6`, start: '13:30', end: '16:30', category: 'hobby', title: '読書・カフェ' },
+        { id: `samp_${key}_7`, start: '16:30', end: '18:00', category: 'life', title: '部屋の整理・掃除' },
+        { id: `samp_${key}_8`, start: '18:00', end: '19:30', category: 'meal', title: '夕食' },
+        { id: `samp_${key}_9`, start: '19:30', end: '21:30', category: 'net', title: 'ネット・情報整理' },
+        { id: `samp_${key}_10`, start: '21:30', end: '23:00', category: 'life', title: '入浴・ストレッチ' },
+        { id: `samp_${key}_11`, start: '23:00', end: '24:00', category: 'sleep', title: '就寝' }
+      );
+    }
+
+    state.appData[key] = {
+      score: isWeekend ? 5 : (i % 3 === 0 ? 3 : 4),
+      note: isWeekend ? '充実した休日。しっかり休養できた。' : '定刻に起床。集中してタスクを消化できた。',
+      blocks: dayBlocks
+    };
+  }
+
+  saveState();
+}
+
+// Timeline Rendering & Management
+function renderTimeline() {
+  const currentKey = formatDateKey(state.currentDate);
+  const dayEvents = getDayBlocks(currentKey);
+
+  // 1. Update Display Date
+  document.getElementById('display-date-text').textContent = formatJapaneseDate(state.currentDate);
+  document.getElementById('date-picker-input').value = currentKey;
+
+  // 2. Calculate daily metrics (Sleep & Free time)
+  let totalSleepMins = 0;
+  let totalFreeMins = 0;
+
+  dayEvents.forEach(evt => {
+    const startMin = timeToMinutes(evt.start);
+    const endMin = timeToMinutes(evt.end);
+    const dur = Math.max(0, endMin - startMin);
+    const cat = evt.category || evt.cat || 'work';
+    const catDef = CATEGORIES[cat] || CATEGORIES.work;
+    if (cat === 'sleep') totalSleepMins += dur;
+    if (catDef.isFree || cat === 'free') totalFreeMins += dur;
+  });
+
+  const sleepHours = (totalSleepMins / 60).toFixed(1);
+  const freeHours = (totalFreeMins / 60).toFixed(1);
+
+  document.getElementById('today-sleep-hours').textContent = sleepHours;
+  document.getElementById('today-free-hours').textContent = freeHours;
+
+  // Badges update
+  const sleepBadge = document.getElementById('today-sleep-badge');
+  if (totalSleepMins >= state.targetSleepHours * 60) {
+    sleepBadge.className = 'metric-status-badge badge-good';
+    sleepBadge.textContent = '目標達成';
+  } else if (totalSleepMins >= (state.targetSleepHours - 1) * 60) {
+    sleepBadge.className = 'metric-status-badge badge-good';
+    sleepBadge.textContent = '概ね良好';
+  } else {
+    sleepBadge.className = 'metric-status-badge badge-warn';
+    sleepBadge.textContent = '睡眠不足';
+  }
+
+  const freeBadge = document.getElementById('today-free-badge');
+  if (totalFreeMins >= 180) {
+    freeBadge.className = 'metric-status-badge badge-good';
+    freeBadge.textContent = '充実';
+  } else if (totalFreeMins >= 60) {
+    freeBadge.className = 'metric-status-badge badge-good';
+    freeBadge.textContent = '確保';
+  } else {
+    freeBadge.className = 'metric-status-badge badge-warn';
+    freeBadge.textContent = '少なめ';
+  }
+
+  // 3. Render Event Blocks (1-page fit with percentage coordinates - always shows Major Category only)
+  const eventsLayer = document.getElementById('timeline-events-layer');
+  eventsLayer.innerHTML = '';
+
+  dayEvents.forEach(evt => {
+    const startMin = Math.max(0, Math.min(1440, timeToMinutes(evt.start)));
+    const endMin = Math.max(startMin, Math.min(1440, timeToMinutes(evt.end)));
+    const durMin = endMin - startMin;
+    if (durMin <= 0) return;
+
+    // Relative percentage placement (0% to 100% of 24h)
+    const topPercent = (startMin / 1440) * 100;
+    const heightPercent = Math.max(1.1, (durMin / 1440) * 100);
+
+    const cat = evt.category || evt.cat || 'work';
+    const catDef = CATEGORIES[cat] || CATEGORIES.work;
+
+    const block = document.createElement('div');
+    block.className = `timeline-event-block cat-${catDef.id}`;
+    block.style.top = `${topPercent}%`;
+    block.style.height = `${heightPercent}%`;
+
+    const titleText = evt.title || evt.note || '';
+    const tooltipText = `${catDef.icon} ${catDef.label}${titleText ? ' (' + titleText + ')' : ''} [${minutesToTimeString(startMin)}-${minutesToTimeString(endMin)}]`;
+
+    // Display exclusively Major Category (Icon + Label) on the timeline block
+    if (durMin <= 25) {
+      block.innerHTML = `<span style="font-size:0.6rem; line-height:1;">${catDef.icon}</span>`;
+    } else {
+      block.innerHTML = `
+        <div class="event-title-single">
+          <span>${catDef.icon} ${catDef.label}</span>
+          <span style="opacity:0.8; font-size:0.56rem; margin-left:auto; font-variant-numeric:tabular-nums; flex-shrink:0;">${minutesToTimeString(startMin)}-${minutesToTimeString(endMin)}</span>
+        </div>
+      `;
+    }
+    block.title = tooltipText;
+
+    block.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(evt);
+    });
+
+    eventsLayer.appendChild(block);
+  });
+
+  // 4. Update Current Time Line
+  updateCurrentTimeLine();
+}
+
+function updateCurrentTimeLine() {
+  const currentLine = document.getElementById('current-time-line');
+  const now = new Date();
+  const todayKey = formatDateKey(now);
+  const currentKey = formatDateKey(state.currentDate);
+
+  if (todayKey === currentKey) {
+    currentLine.style.display = 'block';
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const topPercent = (nowMins / 1440) * 100;
+    currentLine.style.top = `${topPercent}%`;
+  } else {
+    currentLine.style.display = 'none';
+  }
+}
+
+// Background hour rows generator (0 to 24 hours in 24 equal slices with 2-hour label steps)
+function initTimelineBg() {
+  const bg = document.getElementById('hour-rows-bg');
+  bg.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.style.top = `${(h / 24) * 100}%`;
+
+    // Only even hours (0:00, 2:00, 4:00, 6:00...) display numeric label text
+    const labelHtml = (h % 2 === 0) 
+      ? `<div class="hour-label">${String(h).padStart(2, '0')}:00</div>` 
+      : `<div class="hour-label" style="visibility:hidden;">${String(h).padStart(2, '0')}:00</div>`;
+
+    row.innerHTML = labelHtml;
+    bg.appendChild(row);
+  }
+
+  // 24:00 bottom line label
+  const bottomRow = document.createElement('div');
+  bottomRow.className = 'hour-row';
+  bottomRow.style.top = '100%';
+  bottomRow.style.borderTop = '1px solid var(--border-light)';
+  bottomRow.innerHTML = `<div class="hour-label">24:00</div>`;
+  bg.appendChild(bottomRow);
+}
+
+// Modal Form Logic (Fast & Intuitive 1-tap submission with Preset Chips)
+let modalSelectedCat = 'work';
+
+function initModalUI() {
+  const catGrid = document.getElementById('modal-cat-grid');
+  catGrid.innerHTML = '';
+
+  // Render the 7 major categories
+  const majorCatKeys = ['sleep', 'life', 'meal', 'work', 'hobby', 'net', 'transport'];
+  majorCatKeys.forEach(catId => {
+    const cat = CATEGORIES[catId];
+    if (!cat) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `cat-select-btn cat-${cat.id}`;
+    btn.dataset.cat = cat.id;
+    btn.innerHTML = `
+      <div class="cat-icon">${cat.icon}</div>
+      <div class="cat-text">${cat.label}</div>
+    `;
+
+    btn.addEventListener('click', () => {
+      onSelectMajorCategory(cat.id);
+    });
+
+    catGrid.appendChild(btn);
+  });
+}
+
+function onSelectMajorCategory(catId) {
+  modalSelectedCat = catId;
+  const catDef = CATEGORIES[catId] || CATEGORIES.work;
+
+  // Update button selection visual
+  document.querySelectorAll('.cat-select-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.cat === catId);
+  });
+
+  // Render preset chips for the selected category
+  renderMemoPresetChips(catId);
+}
+
+function getCustomChips(catId) {
+  try {
+    const raw = localStorage.getItem('time_visualizer_custom_chips');
+    const all = raw ? JSON.parse(raw) : {};
+    return all[catId] || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function addCustomChip(catId, chipText) {
+  try {
+    const raw = localStorage.getItem('time_visualizer_custom_chips');
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[catId]) all[catId] = [];
+    if (!all[catId].includes(chipText)) {
+      all[catId].push(chipText);
+      localStorage.setItem('time_visualizer_custom_chips', JSON.stringify(all));
+    }
+  } catch (e) {}
+}
+
+function removeCustomChip(catId, chipText) {
+  try {
+    const raw = localStorage.getItem('time_visualizer_custom_chips');
+    const all = raw ? JSON.parse(raw) : {};
+    if (all[catId]) {
+      all[catId] = all[catId].filter(c => c !== chipText);
+      localStorage.setItem('time_visualizer_custom_chips', JSON.stringify(all));
+    }
+  } catch (e) {}
+}
+
+function renderMemoPresetChips(catId) {
+  const container = document.getElementById('modal-memo-presets');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const defaultChips = CATEGORY_PRESET_CHIPS[catId] || CATEGORY_PRESET_CHIPS.work;
+  const customChips = getCustomChips(catId);
+  const memoInput = document.getElementById('modal-memo-input');
+
+  // Render default chips
+  defaultChips.forEach(chipText => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'memo-preset-chip';
+    if (memoInput.value === chipText) {
+      chip.classList.add('selected');
+    }
+    chip.textContent = chipText;
+
+    chip.addEventListener('click', () => {
+      if (memoInput.value === chipText) {
+        memoInput.value = '';
+        chip.classList.remove('selected');
+      } else {
+        memoInput.value = chipText;
+        document.querySelectorAll('.memo-preset-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+      }
+    });
+
+    container.appendChild(chip);
+  });
+
+  // Render custom chips
+  customChips.forEach(chipText => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'memo-preset-chip custom-chip';
+    if (memoInput.value === chipText) {
+      chip.classList.add('selected');
+    }
+    chip.textContent = `${chipText} ✕`;
+    chip.title = 'タップで入力 / 長押しで削除';
+
+    let pressTimer = null;
+    let isLongPress = false;
+
+    const startPress = () => {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        if (confirm(`カスタム候補「${chipText}」を削除しますか？`)) {
+          removeCustomChip(catId, chipText);
+          renderMemoPresetChips(catId);
+          showToast(`「${chipText}」を削除しました`);
+        }
+      }, 600);
+    };
+
+    const cancelPress = () => {
+      if (pressTimer) clearTimeout(pressTimer);
+    };
+
+    chip.addEventListener('touchstart', startPress, { passive: true });
+    chip.addEventListener('touchend', cancelPress);
+    chip.addEventListener('mousedown', startPress);
+    chip.addEventListener('mouseup', cancelPress);
+    chip.addEventListener('mouseleave', cancelPress);
+
+    chip.addEventListener('click', () => {
+      if (isLongPress) return;
+      if (memoInput.value === chipText) {
+        memoInput.value = '';
+        chip.classList.remove('selected');
+      } else {
+        memoInput.value = chipText;
+        document.querySelectorAll('.memo-preset-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+      }
+    });
+
+    container.appendChild(chip);
+  });
+
+  // "+ 追加" button
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'memo-preset-chip add-chip';
+  addBtn.textContent = '＋ 追加';
+  addBtn.title = 'メモ欄のテキストを新しい候補として追加';
+
+  addBtn.addEventListener('click', () => {
+    let word = memoInput.value.trim();
+    if (!word) {
+      const prompted = prompt('このカテゴリに追加する候補ワードを入力してください:');
+      if (prompted) word = prompted.trim();
+    }
+    if (word) {
+      if (defaultChips.includes(word) || customChips.includes(word)) {
+        showToast(`「${word}」は既に候補に登録されています`);
+        return;
+      }
+      addCustomChip(catId, word);
+      memoInput.value = word;
+      renderMemoPresetChips(catId);
+      showToast(`「${word}」を候補に追加しました`);
+    }
+  });
+
+  container.appendChild(addBtn);
+}
+
+function openCreateModal(startMins, endMins) {
+  state.editingEventId = null;
+  document.getElementById('modal-heading').textContent = '新しい行動を記録';
+  document.getElementById('modal-delete-btn').style.display = 'none';
+
+  document.getElementById('modal-start-time').value = minutesToTimeString(startMins);
+  document.getElementById('modal-end-time').value = minutesToTimeString(endMins);
+  document.getElementById('modal-memo-input').value = '';
+
+  updateModalDurationBadge();
+  onSelectMajorCategory('work');
+
+  document.getElementById('event-modal-backdrop').classList.add('show');
+}
+
+function openEditModal(evt) {
+  state.editingEventId = evt.id;
+  document.getElementById('modal-heading').textContent = '行動を編集';
+  document.getElementById('modal-delete-btn').style.display = 'block';
+
+  const startMins = timeToMinutes(evt.start);
+  const endMins = timeToMinutes(evt.end);
+  document.getElementById('modal-start-time').value = minutesToTimeString(startMins);
+  document.getElementById('modal-end-time').value = minutesToTimeString(endMins);
+  document.getElementById('modal-memo-input').value = evt.title || evt.note || '';
+
+  let cat = evt.category || evt.cat || 'work';
+  if (cat === 'travel') cat = 'transport';
+  if (cat === 'free') cat = 'hobby';
+
+  updateModalDurationBadge();
+  onSelectMajorCategory(cat);
+
+  document.getElementById('event-modal-backdrop').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('event-modal-backdrop').classList.remove('show');
+}
+
+function updateModalDurationBadge() {
+  const sStr = document.getElementById('modal-start-time').value;
+  const eStr = document.getElementById('modal-end-time').value;
+  if (!sStr || !eStr) return;
+
+  let s = timeStringToMinutes(sStr);
+  let e = timeStringToMinutes(eStr);
+  if (e <= s) e = s + 60; // minimum duration
+
+  const durHours = ((e - s) / 60).toFixed(1);
+  document.getElementById('modal-duration-badge').textContent = `所要時間: ${durHours}時間`;
+}
+
+function saveEventFromModal() {
+  const sStr = document.getElementById('modal-start-time').value;
+  const eStr = document.getElementById('modal-end-time').value;
+  let s = timeStringToMinutes(sStr);
+  let e = timeStringToMinutes(eStr);
+
+  if (e <= s) {
+    e = Math.min(1440, s + 60);
+  }
+
+  const currentKey = formatDateKey(state.currentDate);
+  const dayBlocks = getDayBlocks(currentKey);
+  const memoText = document.getElementById('modal-memo-input').value.trim();
+  const catDef = CATEGORIES[modalSelectedCat] || CATEGORIES.work;
+  const title = memoText || catDef.label;
+
+  const startStr = minutesToTimeString(s);
+  const endStr = minutesToTimeString(e);
+
+  if (state.editingEventId) {
+    // Update existing
+    const idx = dayBlocks.findIndex(b => b.id === state.editingEventId);
+    if (idx !== -1) {
+      dayBlocks[idx] = {
+        id: state.editingEventId,
+        start: startStr,
+        end: endStr,
+        category: modalSelectedCat,
+        title: title
+      };
+    }
+  } else {
+    // Create new
+    dayBlocks.push({
+      id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      start: startStr,
+      end: endStr,
+      category: modalSelectedCat,
+      title: title
+    });
+  }
+
+  // Sort by start time
+  dayBlocks.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+  setDayBlocks(currentKey, dayBlocks);
+
+  saveState();
+  closeModal();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('行動を保存しました');
+}
+
+function deleteCurrentEditingEvent() {
+  if (!state.editingEventId) return;
+  const currentKey = formatDateKey(state.currentDate);
+  const dayBlocks = getDayBlocks(currentKey).filter(b => b.id !== state.editingEventId);
+  setDayBlocks(currentKey, dayBlocks);
+
+  saveState();
+  closeModal();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('削除しました', '🗑️');
+}
+
+// Drag & Tap Interaction on Timeline (1-page fit with responsive coordinates)
+function initTimelineInteractions() {
+  const clickLayer = document.getElementById('timeline-click-layer');
+  const preview = document.getElementById('selection-preview');
+
+  let isDragging = false;
+  let startY = 0;
+  let currentY = 0;
+  let dragStartMin = 0;
+
+  function getMinsFromEvent(e) {
+    const rect = clickLayer.getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const clampedY = Math.max(0, Math.min(rect.height, clientY - rect.top));
+    const ratio = clampedY / rect.height;
+    return Math.max(0, Math.min(1440, ratio * 1440));
+  }
+
+  function snapToHalfHour(mins) {
+    return Math.floor(mins / 30) * 30;
+  }
+
+  function onPointerDown(e) {
+    isDragging = true;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startY = clientY;
+    currentY = startY;
+
+    const rawMins = getMinsFromEvent(e);
+    dragStartMin = snapToHalfHour(rawMins);
+
+    preview.style.display = 'block';
+    preview.style.top = `${(dragStartMin / 1440) * 100}%`;
+    preview.style.height = `${(30 / 1440) * 100}%`;
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging) return;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    currentY = clientY;
+
+    const rawMins = getMinsFromEvent(e);
+    let currentSnapMin = Math.round(rawMins / 30) * 30;
+
+    let s = Math.min(dragStartMin, currentSnapMin);
+    let eTime = Math.max(dragStartMin, currentSnapMin);
+    if (eTime === s) eTime += 30;
+
+    preview.style.top = `${(s / 1440) * 100}%`;
+    preview.style.height = `${((eTime - s) / 1440) * 100}%`;
+  }
+
+  function onPointerUp(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    preview.style.display = 'none';
+
+    const rawMins = getMinsFromEvent(e);
+    let currentSnapMin = Math.round(rawMins / 30) * 30;
+
+    let s = Math.min(dragStartMin, currentSnapMin);
+    let eTime = Math.max(dragStartMin, currentSnapMin);
+
+    // If simple tap with barely any drag movement, select default 1-hour block
+    if (Math.abs(currentY - startY) < 8) {
+      s = dragStartMin;
+      eTime = Math.min(1440, s + 60);
+    } else if (eTime === s) {
+      eTime = Math.min(1440, s + 30);
+    }
+
+    openCreateModal(s, eTime);
+  }
+
+  clickLayer.addEventListener('mousedown', onPointerDown);
+  window.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('mouseup', onPointerUp);
+
+  clickLayer.addEventListener('touchstart', onPointerDown, { passive: true });
+  window.addEventListener('touchmove', onPointerMove, { passive: true });
+  window.addEventListener('touchend', onPointerUp);
+}
+
+// Shortcut Actions: Workday Template, Holiday Template, Copy Yesterday (PC Dashboard Harmonized)
+function applyWorkdayTemplate() {
+  const currentKey = formatDateKey(state.currentDate);
+  const blocks = [
+    { id: `tpl_${Date.now()}_1`, start: '00:00', end: '06:30', category: 'sleep', title: '睡眠' },
+    { id: `tpl_${Date.now()}_2`, start: '06:30', end: '07:30', category: 'life', title: '朝の身支度' },
+    { id: `tpl_${Date.now()}_3`, start: '07:30', end: '08:30', category: 'transport', title: '通勤・移動' },
+    { id: `tpl_${Date.now()}_4`, start: '08:30', end: '12:00', category: 'work', title: '午前の業務' },
+    { id: `tpl_${Date.now()}_5`, start: '12:00', end: '13:00', category: 'meal', title: '昼食・休憩' },
+    { id: `tpl_${Date.now()}_6`, start: '13:00', end: '18:00', category: 'work', title: '午後の業務' },
+    { id: `tpl_${Date.now()}_7`, start: '18:00', end: '19:00', category: 'transport', title: '帰宅・移動' },
+    { id: `tpl_${Date.now()}_8`, start: '19:00', end: '20:00', category: 'meal', title: '夕食' },
+    { id: `tpl_${Date.now()}_9`, start: '20:00', end: '21:00', category: 'life', title: '入浴・家事' },
+    { id: `tpl_${Date.now()}_10`, start: '21:00', end: '22:30', category: 'hobby', title: '読書・散歩' },
+    { id: `tpl_${Date.now()}_11`, start: '22:30', end: '23:30', category: 'net', title: 'YouTube視聴' },
+    { id: `tpl_${Date.now()}_12`, start: '23:30', end: '24:00', category: 'sleep', title: '就寝' }
+  ];
+  setDayBlocks(currentKey, blocks);
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('平日テンプレートを適用しました');
+}
+
+function applyHolidayTemplate() {
+  const currentKey = formatDateKey(state.currentDate);
+  const blocks = [
+    { id: `tpl_${Date.now()}_1`, start: '00:00', end: '07:30', category: 'sleep', title: '快眠' },
+    { id: `tpl_${Date.now()}_2`, start: '07:30', end: '09:00', category: 'life', title: '朝の身支度・散歩' },
+    { id: `tpl_${Date.now()}_3`, start: '09:00', end: '10:00', category: 'meal', title: '朝食' },
+    { id: `tpl_${Date.now()}_4`, start: '10:00', end: '12:30', category: 'hobby', title: '趣味・散歩' },
+    { id: `tpl_${Date.now()}_5`, start: '12:30', end: '13:30', category: 'meal', title: '昼食' },
+    { id: `tpl_${Date.now()}_6`, start: '13:30', end: '16:30', category: 'hobby', title: 'カフェ・外出' },
+    { id: `tpl_${Date.now()}_7`, start: '16:30', end: '18:00', category: 'life', title: '買い物・部屋の掃除' },
+    { id: `tpl_${Date.now()}_8`, start: '18:00', end: '19:30', category: 'meal', title: '夕食' },
+    { id: `tpl_${Date.now()}_9`, start: '19:30', end: '21:30', category: 'net', title: '動画視聴・SNS' },
+    { id: `tpl_${Date.now()}_10`, start: '21:30', end: '23:00', category: 'life', title: '入浴・ストレッチ' },
+    { id: `tpl_${Date.now()}_11`, start: '23:00', end: '24:00', category: 'sleep', title: '就寝準備' }
+  ];
+  setDayBlocks(currentKey, blocks);
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('休日テンプレートを適用しました');
+}
+
+function copyYesterday() {
+  const yesterday = new Date(state.currentDate);
+  yesterday.setDate(state.currentDate.getDate() - 1);
+  const yKey = formatDateKey(yesterday);
+  const currentKey = formatDateKey(state.currentDate);
+
+  const yBlocks = getDayBlocks(yKey);
+  if (!yBlocks || yBlocks.length === 0) {
+    showToast('前日のデータがありません', '⚠️');
+    return;
+  }
+
+  // Deep clone blocks with new IDs
+  const cloned = yBlocks.map(b => ({
+    ...b,
+    id: `cp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+  }));
+  setDayBlocks(currentKey, cloned);
+
+  saveState();
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+  showToast('昨日の予定をコピーしました');
+}
+
+// SCREEN 2: SLEEP ANALYSIS LOGIC
+function renderSleepAnalysis() {
+  document.getElementById('target-sleep-val').textContent = `${state.targetSleepHours.toFixed(1)}h`;
+
+  // 1. Calculate today's sleep
+  const currentKey = formatDateKey(state.currentDate);
+  const dayEvents = getDayBlocks(currentKey);
+  let daySleepMins = 0;
+  dayEvents.forEach(ev => {
+    const cat = ev.category || ev.cat;
+    if (cat === 'sleep') daySleepMins += Math.max(0, timeToMinutes(ev.end) - timeToMinutes(ev.start));
+  });
+  const daySleepHours = daySleepMins / 60;
+
+  // Circular Progress Ring calculation
+  const targetMins = state.targetSleepHours * 60;
+  const percent = Math.min(100, Math.round((daySleepMins / targetMins) * 100));
+  
+  const circumference = 2 * Math.PI * 50; // r=50 -> ~314.159
+  const offset = circumference - (percent / 100) * circumference;
+  
+  const ringBar = document.getElementById('sleep-ring-progress');
+  ringBar.style.strokeDashoffset = offset;
+  document.getElementById('sleep-ring-percent').textContent = `${percent}%`;
+  document.getElementById('sleep-ring-detail').textContent = `${daySleepHours.toFixed(1)}h / ${state.targetSleepHours.toFixed(1)}h`;
+
+  const statusMsg = document.getElementById('sleep-ring-status-msg');
+  if (percent >= 100) {
+    statusMsg.textContent = '🎉 目標をしっかり達成！頭脳と体が十分に回復しています';
+    statusMsg.style.color = '#166534';
+  } else if (percent >= 80) {
+    statusMsg.textContent = '👍 おおむね目標通りです。日中の集中力を維持できます';
+    statusMsg.style.color = '#1e40af';
+  } else {
+    statusMsg.textContent = '⚠️ 睡眠が不足気味です。今夜は早めの就寝をおすすめします';
+    statusMsg.style.color = '#b91c1c';
+  }
+
+  // 2. 7-day Sleep Debt (Budget) Calculation
+  let total7DaysSleepMins = 0;
+  const recent7Days = [];
+  const baseD = new Date(state.currentDate);
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(baseD);
+    d.setDate(baseD.getDate() - i);
+    const key = formatDateKey(d);
+    const evs = getDayBlocks(key);
+    let sMins = 0;
+    let sleepBlocks = [];
+
+    evs.forEach(e => {
+      const cat = e.category || e.cat;
+      if (cat === 'sleep') {
+        const s = timeToMinutes(e.start);
+        const end = timeToMinutes(e.end);
+        sMins += Math.max(0, end - s);
+        sleepBlocks.push({ start: s, end: end });
+      }
+    });
+
+    total7DaysSleepMins += sMins;
+    recent7Days.push({ date: d, key: key, sleepMins: sMins, blocks: sleepBlocks });
+  }
+
+  const target7DaysMins = state.targetSleepHours * 60 * 7;
+  const debtDiffHours = ((total7DaysSleepMins - target7DaysMins) / 60).toFixed(1);
+  const actualTotalHours = (total7DaysSleepMins / 60).toFixed(1);
+  const targetTotalHours = (target7DaysMins / 60).toFixed(1);
+
+  document.getElementById('debt-target-total').textContent = `${targetTotalHours}h`;
+  document.getElementById('debt-actual-total').textContent = `${actualTotalHours}h`;
+
+  const diffNum = parseFloat(debtDiffHours);
+  const diffElem = document.getElementById('debt-balance-diff');
+  const badgeElem = document.getElementById('sleep-debt-badge');
+  const adviceElem = document.getElementById('sleep-debt-advice');
+
+  if (diffNum >= 0) {
+    diffElem.textContent = `+${debtDiffHours}h`;
+    diffElem.style.color = '#166534';
+    badgeElem.textContent = '負債なし 🎉';
+    badgeElem.className = 'debt-status-tag badge-good';
+    adviceElem.textContent = '直近7日間の睡眠バジェットは満たされています！この健康的な睡眠リズムを維持しましょう。';
+  } else {
+    diffElem.textContent = `${debtDiffHours}h`;
+    diffElem.style.color = '#dc2626';
+    badgeElem.textContent = `不足 ${Math.abs(diffNum)}h ⚠️`;
+    badgeElem.className = 'debt-status-tag badge-warn';
+    adviceElem.textContent = `今週は累計 ${Math.abs(diffNum)}時間の睡眠不足（睡眠負債）が発生しています。休日に寝だめするのではなく、平日の就寝時刻を30〜45分前倒しして解消していきましょう。`;
+  }
+
+  // 3. Bedtime & Wakeup Consistency Chart
+  const chartContainer = document.getElementById('consistency-chart-rows');
+  chartContainer.innerHTML = '';
+
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  recent7Days.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'chart-row-day';
+
+    const dayName = `${item.date.getMonth() + 1}/${item.date.getDate()} (${dayNames[item.date.getDay()]})`;
+
+    const track = document.createElement('div');
+    track.className = 'chart-bar-track';
+
+    if (item.blocks.length > 0) {
+      item.blocks.forEach(blk => {
+        let s = blk.start;
+        let e = blk.end;
+
+        let leftPercent = (s / 1440) * 100;
+        let widthPercent = Math.max(3, ((e - s) / 1440) * 100);
+
+        const bar = document.createElement('div');
+        bar.className = 'chart-sleep-bar';
+        bar.style.left = `${leftPercent}%`;
+        bar.style.width = `${widthPercent}%`;
+        bar.textContent = `${( (e - s) / 60 ).toFixed(1)}h`;
+        track.appendChild(bar);
+      });
+    }
+
+    row.innerHTML = `<div class="chart-day-label">${dayName}</div>`;
+    row.appendChild(track);
+    chartContainer.appendChild(row);
+  });
+}
+
+// SCREEN 3: REPORTS & HEATMAP LOGIC
+function renderReports() {
+  const filter = state.activeReportFilter; // 'sleep', 'free', 'all'
+  let subview = state.activeReportSubview; // 'week', 'month', 'year'
+
+  // If filter is 'all', disable month and year subviews, force 'week'
+  const isAllFilter = (filter === 'all');
+  if (isAllFilter && subview !== 'week') {
+    state.activeReportSubview = 'week';
+    subview = 'week';
+  }
+
+  // Update subview button disabled states and active indicator
+  document.querySelectorAll('.report-subview-btn').forEach(b => {
+    const sv = b.dataset.subview;
+    if (isAllFilter && (sv === 'month' || sv === 'year')) {
+      b.disabled = true;
+      b.classList.add('disabled');
+      b.classList.remove('active');
+    } else {
+      b.disabled = false;
+      b.classList.remove('disabled');
+      b.classList.toggle('active', sv === subview);
+    }
+  });
+
+  // Toggle subviews
+  document.getElementById('subview-week').style.display = (subview === 'week') ? 'block' : 'none';
+  document.getElementById('subview-month').style.display = (subview === 'month') ? 'flex' : 'none';
+  document.getElementById('subview-year').style.display = (subview === 'year') ? 'flex' : 'none';
+
+  // Toggle backup card: only show in 'week' subview
+  const backupCard = document.getElementById('reports-backup-card');
+  if (backupCard) {
+    backupCard.style.display = (subview === 'week') ? 'block' : 'none';
+  }
+
+  if (subview === 'week') {
+    renderWeeklyMatrix(filter);
+  } else if (subview === 'month') {
+    renderMonthlyCalendar(filter);
+  } else if (subview === 'year') {
+    renderYearlyHeatmap(filter);
+  }
+
+  updateBackupDataCount();
+}
+
+// 1. Weekly Matrix (7 days vertical x 24 hours horizontal)
+function renderWeeklyMatrix(filter) {
+  const container = document.getElementById('weekly-matrix-container');
+  container.innerHTML = '';
+
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  const baseD = new Date(state.currentDate);
+  const todayKey = formatDateKey(new Date());
+
+  // Generate 7 days in chronological order: past days -> today (top to bottom)
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(baseD);
+    d.setDate(baseD.getDate() - i);
+    days.push(d);
+  }
+
+  // 1. Header row (Empty top-left + 24 hour labels)
+  const emptyHead = document.createElement('div');
+  emptyHead.className = 'matrix-header-cell';
+  container.appendChild(emptyHead);
+
+  for (let h = 0; h < 24; h++) {
+    const head = document.createElement('div');
+    head.className = 'matrix-header-cell';
+    // Show major hour marks (0, 6, 12, 18, 23) cleanly
+    if (h === 0 || h === 6 || h === 12 || h === 18) {
+      head.textContent = `${h}`;
+    } else if (h === 23) {
+      head.textContent = '23';
+    } else {
+      head.textContent = '·';
+      head.style.opacity = '0.35';
+    }
+    container.appendChild(head);
+  }
+
+  // 2. 7 Day Rows (each row: 1 day label + 24 hourly activity cells)
+  days.forEach(d => {
+    const key = formatDateKey(d);
+    const evs = getDayBlocks(key);
+    const isToday = (key === todayKey);
+
+    // Left Day Label
+    const dayLabel = document.createElement('div');
+    dayLabel.className = `matrix-day-label ${isToday ? 'is-today' : ''}`;
+    dayLabel.textContent = `${d.getMonth() + 1}/${d.getDate()}(${dayNames[d.getDay()]})`;
+    dayLabel.title = 'タップしてこの日のタイムラインを表示';
+
+    // Tap day label jumps to timeline screen
+    dayLabel.addEventListener('click', () => {
+      state.currentDate = new Date(d);
+      switchScreen('screen-timeline');
+      renderTimeline();
+      showToast(`${formatJapaneseDate(d)} を表示しました`, '📅');
+    });
+
+    container.appendChild(dayLabel);
+
+    // 24 Hour cells for this day
+    for (let h = 0; h < 24; h++) {
+      const cell = document.createElement('div');
+      cell.className = 'matrix-cell';
+
+      const hStart = h * 60;
+      const hEnd = (h + 1) * 60;
+      const activeEv = evs.find(e => {
+        const s = timeToMinutes(e.start);
+        const end = timeToMinutes(e.end);
+        return s < hEnd && end > hStart;
+      });
+
+      if (activeEv) {
+        const catKey = activeEv.category || activeEv.cat || 'work';
+        const catDef = CATEGORIES[catKey] || CATEGORIES.work;
+        const isFree = catDef.isFree || catKey === 'free';
+        let isMatch = false;
+
+        if (filter === 'sleep' && catKey === 'sleep') {
+          cell.style.background = '#60a5fa';
+          isMatch = true;
+        } else if (filter === 'free' && isFree) {
+          cell.style.background = '#f472b6';
+          isMatch = true;
+        } else if (filter === 'all') {
+          cell.style.background = catDef ? (catDef.accent || catDef.border || '#cbd5e1') : '#cbd5e1';
+          isMatch = true;
+        }
+
+        const titleText = activeEv.title || activeEv.note || '';
+        const detailMsg = `${d.getMonth() + 1}/${d.getDate()} ${h}:00〜${h + 1}:00\n${catDef.icon} ${catDef.label}${titleText ? ' (' + titleText + ')' : ''}`;
+        cell.title = detailMsg;
+
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToast(detailMsg, catDef.icon || '✓');
+        });
+      } else {
+        const emptyMsg = `${d.getMonth() + 1}/${d.getDate()} ${h}:00〜${h + 1}:00\n予定なし`;
+        cell.title = emptyMsg;
+        cell.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToast(emptyMsg, 'ℹ️');
+        });
+      }
+
+      container.appendChild(cell);
+    }
+  });
+}
+
+// 2. Monthly Calendar Heatmap (1-page fit, no vertical scroll)
+function renderMonthlyCalendar(filter) {
+  const grid = document.getElementById('month-calendar-grid');
+  grid.innerHTML = '';
+
+  const curYear = state.reportMonth.getFullYear();
+  const curMonth = state.reportMonth.getMonth();
+
+  document.getElementById('display-month-title').textContent = `${curYear}年${curMonth + 1}月`;
+
+  // Day header names
+  const dayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
+  dayHeaders.forEach(dh => {
+    const hc = document.createElement('div');
+    hc.className = 'cal-day-header';
+    hc.textContent = dh;
+    grid.appendChild(hc);
+  });
+
+  const firstDay = new Date(curYear, curMonth, 1).getDay();
+  const totalDays = new Date(curYear, curMonth + 1, 0).getDate();
+
+  // Dynamic row calculation to split 100% available height into equal rows
+  const numWeeks = Math.ceil((firstDay + totalDays) / 7);
+  grid.style.gridTemplateRows = `18px repeat(${numWeeks}, 1fr)`;
+
+  // Blank slots for days before 1st
+  for (let b = 0; b < firstDay; b++) {
+    const blank = document.createElement('div');
+    blank.className = 'cal-day-blank';
+    grid.appendChild(blank);
+  }
+
+  // Days of month
+  for (let d = 1; d <= totalDays; d++) {
+    const thisDate = new Date(curYear, curMonth, d);
+    const key = formatDateKey(thisDate);
+    const evs = getDayBlocks(key);
+
+    let valMins = 0;
+    evs.forEach(e => {
+      const cat = e.category || e.cat || 'work';
+      const catDef = CATEGORIES[cat] || CATEGORIES.work;
+      const isFree = catDef.isFree || cat === 'free';
+      const dur = Math.max(0, timeToMinutes(e.end) - timeToMinutes(e.start));
+
+      if (filter === 'sleep' && cat === 'sleep') valMins += dur;
+      if (filter === 'free' && isFree) valMins += dur;
+      if (filter === 'all') valMins += dur;
+    });
+
+    const hours = (valMins / 60);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day-cell';
+
+    // Heatmap shades (4 levels)
+    let bg = '#ffffff';
+    let textColor = 'inherit';
+
+    if (hours > 0) {
+      if (filter === 'sleep') {
+        if (hours >= 7.5) { bg = '#93c5fd'; textColor = '#1e3a8a'; }
+        else if (hours >= 6.0) { bg = '#bfdbfe'; textColor = '#1e40af'; }
+        else if (hours >= 4.0) { bg = '#dbeafe'; textColor = '#2563eb'; }
+        else { bg = '#eff6ff'; textColor = '#3b82f6'; }
+      } else if (filter === 'free') {
+        if (hours >= 4.0) { bg = '#f472b6'; textColor = '#831843'; }
+        else if (hours >= 2.5) { bg = '#fbcfe8'; textColor = '#9d174d'; }
+        else if (hours >= 1.0) { bg = '#fce7f3'; textColor = '#be185d'; }
+        else { bg = '#fdf2f8'; textColor = '#db2777'; }
+      } else {
+        // all activities registered
+        if (hours >= 14) bg = '#a7f3d0';
+        else if (hours >= 8) bg = '#bbf7d0';
+        else bg = '#dcfce7';
+      }
+    }
+
+    cell.style.backgroundColor = bg;
+    cell.style.color = textColor;
+
+    cell.innerHTML = `
+      <span class="cal-day-num">${d}</span>
+      <span class="cal-day-val">${hours > 0 ? hours.toFixed(1) + 'h' : '-'}</span>
+    `;
+
+    cell.addEventListener('click', () => {
+      state.currentDate = thisDate;
+      switchScreen('screen-timeline');
+      renderTimeline();
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+// 3. Yearly Heatmap (GitHub 365 Days Grid, 100% width, no horizontal scroll)
+function renderYearlyHeatmap(filter) {
+  const scrollContainer = document.getElementById('yearly-heatmap-scroll');
+  scrollContainer.innerHTML = '';
+
+  const tooltip = document.getElementById('app-tooltip');
+
+  // Dynamic legend color update
+  const legendContainer = document.getElementById('yearly-legend-container');
+  if (legendContainer) {
+    let legendColors = ['#f1f5f9', '#bfdbfe', '#60a5fa', '#2563eb']; // default / sleep
+    if (filter === 'free') {
+      legendColors = ['#f1f5f9', '#fbcfe8', '#f472b6', '#db2777'];
+    } else if (filter === 'all') {
+      legendColors = ['#f1f5f9', '#dcfce7', '#86efac', '#16a34a'];
+    }
+    const boxes = legendContainer.querySelectorAll('.legend-box');
+    boxes.forEach((box, idx) => {
+      if (legendColors[idx]) {
+        box.style.background = legendColors[idx];
+      }
+    });
+  }
+
+  const today = new Date();
+  
+  // 52 weeks (364 days + today)
+  const totalDays = 52 * 7;
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - totalDays + 1);
+
+  let currentLoopDate = new Date(startDate);
+  let totalLoggedDays = 0;
+  let totalHours = 0;
+
+  // Group by 52 columns
+  for (let w = 0; w < 52; w++) {
+    const col = document.createElement('div');
+    col.className = 'year-col-week';
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const dKey = formatDateKey(currentLoopDate);
+      const evs = getDayBlocks(dKey);
+
+      let valMins = 0;
+      evs.forEach(e => {
+        const cat = e.category || e.cat || 'work';
+        const catDef = CATEGORIES[cat] || CATEGORIES.work;
+        const isFree = catDef.isFree || cat === 'free';
+        const dur = Math.max(0, timeToMinutes(e.end) - timeToMinutes(e.start));
+
+        if (filter === 'sleep' && cat === 'sleep') valMins += dur;
+        if (filter === 'free' && isFree) valMins += dur;
+        if (filter === 'all') valMins += dur;
+      });
+
+      const hours = (valMins / 60);
+      if (hours > 0) {
+        totalLoggedDays++;
+        totalHours += hours;
+      }
+
+      const dot = document.createElement('div');
+      dot.className = 'year-dot';
+
+      // 4 levels of pastel intensity
+      let bg = '#f1f5f9';
+      if (hours > 0) {
+        if (filter === 'sleep') {
+          if (hours >= 7.5) bg = '#2563eb';
+          else if (hours >= 6.5) bg = '#60a5fa';
+          else if (hours >= 5.0) bg = '#93c5fd';
+          else bg = '#dbeafe';
+        } else if (filter === 'free') {
+          if (hours >= 4.0) bg = '#db2777';
+          else if (hours >= 2.5) bg = '#f472b6';
+          else if (hours >= 1.0) bg = '#fbcfe8';
+          else bg = '#fce7f3';
+        } else {
+          if (hours >= 16) bg = '#16a34a';
+          else if (hours >= 10) bg = '#4ade80';
+          else if (hours >= 5) bg = '#86efac';
+          else bg = '#dcfce7';
+        }
+      }
+
+      dot.style.backgroundColor = bg;
+
+      const thisLoopDate = new Date(currentLoopDate);
+      const labelText = `${formatJapaneseDate(thisLoopDate)}: ${hours > 0 ? hours.toFixed(1) + '時間' : '記録なし'}`;
+
+      const updateSelectedInfo = () => {
+        document.querySelectorAll('.year-dot.active').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        const badge = document.getElementById('yearly-selected-text');
+        if (badge) {
+          const hlColor = (filter === 'free') ? '#db2777' : (filter === 'all' ? '#16a34a' : '#2563eb');
+          badge.innerHTML = `<strong>${formatJapaneseDate(thisLoopDate)}</strong>: <span style="font-weight:700;color:${hlColor};">${hours > 0 ? hours.toFixed(1) + '時間' : '記録なし'}</span> <span style="color:#64748b;margin-left:4px;font-size:0.65rem;">(タップで移動)</span>`;
+        }
+      };
+
+      dot.addEventListener('mouseenter', (e) => {
+        updateSelectedInfo();
+        tooltip.textContent = labelText;
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${e.clientX + 10}px`;
+        tooltip.style.top = `${e.clientY - 25}px`;
+      });
+      dot.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+
+      dot.addEventListener('click', () => {
+        updateSelectedInfo();
+        state.currentDate = thisLoopDate;
+        switchScreen('screen-timeline');
+        renderTimeline();
+        showToast(`${formatJapaneseDate(thisLoopDate)} を表示しました`, '📅');
+      });
+
+      col.appendChild(dot);
+      currentLoopDate.setDate(currentLoopDate.getDate() + 1);
+    }
+
+    scrollContainer.appendChild(col);
+  }
+
+  // Update summary statistics in subview-year
+  const avg = totalLoggedDays > 0 ? (totalHours / totalLoggedDays).toFixed(1) : '0.0';
+  const statsSummary = document.getElementById('yearly-stats-summary');
+  if (statsSummary) {
+    statsSummary.innerHTML = `
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${totalLoggedDays}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">日</span></div>
+        <div class="yearly-stat-lbl">記録日数</div>
+      </div>
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${totalHours.toFixed(1)}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">h</span></div>
+        <div class="yearly-stat-lbl">年間合計</div>
+      </div>
+      <div class="yearly-stat-box">
+        <div class="yearly-stat-val">${avg}<span style="font-size:0.65rem;font-weight:600;margin-left:2px;">h</span></div>
+        <div class="yearly-stat-lbl">1日平均</div>
+      </div>
+    `;
+  }
+}
+
+// Navigation Screen Switching
+function switchScreen(targetScreenId) {
+  document.querySelectorAll('.screen-view').forEach(sc => {
+    sc.classList.toggle('active', sc.id === targetScreenId);
+  });
+
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.screen === targetScreenId);
+  });
+
+  const headerDateControls = document.getElementById('header-timeline-controls');
+  if (targetScreenId === 'screen-timeline') {
+    headerDateControls.style.display = 'block';
+  } else {
+    headerDateControls.style.display = 'none';
+  }
+
+  if (targetScreenId === 'screen-sleep') {
+    renderSleepAnalysis();
+  } else if (targetScreenId === 'screen-reports') {
+    renderReports();
+  }
+}
+
+// Event Listeners Initialization
+function initEventListeners() {
+  // Navigation Tabs
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchScreen(btn.dataset.screen);
+    });
+  });
+
+  // Date Navigation
+  document.getElementById('prev-date-btn').addEventListener('click', () => {
+    state.currentDate.setDate(state.currentDate.getDate() - 1);
+    renderTimeline();
+  });
+
+  document.getElementById('next-date-btn').addEventListener('click', () => {
+    state.currentDate.setDate(state.currentDate.getDate() + 1);
+    renderTimeline();
+  });
+
+  document.getElementById('jump-today-btn').addEventListener('click', () => {
+    state.currentDate = new Date();
+    renderTimeline();
+  });
+
+  document.getElementById('date-picker-input').addEventListener('change', (e) => {
+    if (e.target.value) {
+      state.currentDate = parseDateKey(e.target.value);
+      renderTimeline();
+    }
+  });
+
+  // Shortcut Buttons
+  document.getElementById('btn-tpl-workday').addEventListener('click', applyWorkdayTemplate);
+  document.getElementById('btn-tpl-holiday').addEventListener('click', applyHolidayTemplate);
+  document.getElementById('btn-copy-yesterday').addEventListener('click', copyYesterday);
+  document.getElementById('btn-add-event-manual').addEventListener('click', () => {
+    openCreateModal(540, 600); // 9:00 - 10:00
+  });
+
+  // Modal Buttons & Inputs
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-save-btn').addEventListener('click', saveEventFromModal);
+  document.getElementById('modal-delete-btn').addEventListener('click', deleteCurrentEditingEvent);
+  document.getElementById('modal-start-time').addEventListener('input', updateModalDurationBadge);
+  document.getElementById('modal-end-time').addEventListener('input', updateModalDurationBadge);
+
+  // Backdrop click to close
+  document.getElementById('event-modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'event-modal-backdrop') closeModal();
+  });
+
+  // Sleep Goal Stepper
+  document.getElementById('btn-target-dec').addEventListener('click', () => {
+    if (state.targetSleepHours > 5.0) {
+      state.targetSleepHours = parseFloat((state.targetSleepHours - 0.5).toFixed(1));
+      saveState();
+      renderSleepAnalysis();
+    }
+  });
+
+  document.getElementById('btn-target-inc').addEventListener('click', () => {
+    if (state.targetSleepHours < 10.0) {
+      state.targetSleepHours = parseFloat((state.targetSleepHours + 0.5).toFixed(1));
+      saveState();
+      renderSleepAnalysis();
+    }
+  });
+
+  // Report Category Filter Buttons
+  document.querySelectorAll('.report-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.report-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeReportFilter = btn.dataset.filter;
+      renderReports();
+    });
+  });
+
+  // Report Subview Buttons
+  document.querySelectorAll('.report-subview-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled || btn.classList.contains('disabled')) return;
+      document.querySelectorAll('.report-subview-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeReportSubview = btn.dataset.subview;
+      renderReports();
+    });
+  });
+
+  // Month navigation in calendar report
+  document.getElementById('prev-month-btn').addEventListener('click', () => {
+    state.reportMonth.setMonth(state.reportMonth.getMonth() - 1);
+    renderMonthlyCalendar(state.activeReportFilter);
+  });
+
+  document.getElementById('next-month-btn').addEventListener('click', () => {
+    state.reportMonth.setMonth(state.reportMonth.getMonth() + 1);
+    renderMonthlyCalendar(state.activeReportFilter);
+  });
+
+  // Backup & Restore Buttons
+  document.getElementById('btn-export-json').addEventListener('click', exportDataAsJSON);
+  document.getElementById('btn-import-json').addEventListener('click', () => {
+    document.getElementById('json-file-input').click();
+  });
+  document.getElementById('json-file-input').addEventListener('change', handleJSONFileSelect);
+
+  // Import Modal Choice Buttons
+  document.getElementById('import-modal-close-btn').addEventListener('click', closeImportModal);
+  document.getElementById('btn-import-cancel').addEventListener('click', closeImportModal);
+  document.getElementById('btn-import-merge').addEventListener('click', () => applyImport('merge'));
+  document.getElementById('btn-import-overwrite').addEventListener('click', () => applyImport('overwrite'));
+
+  // Import Modal backdrop click
+  document.getElementById('import-modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'import-modal-backdrop') closeImportModal();
+  });
+}
+
+// Backup & Restore Logic
+let pendingImportData = null;
+
+function updateBackupDataCount() {
+  const badge = document.getElementById('backup-data-count');
+  if (!badge) return;
+  const daysCount = Object.keys(state.appData).filter(k => (getDayBlocks(k)).length > 0).length;
+  badge.textContent = `${daysCount}日分記録中`;
+}
+
+function exportDataAsJSON() {
+  const exportObj = {
+    app: 'time-visualizer',
+    version: '2.0',
+    exportedAt: new Date().toISOString(),
+    targetSleepHours: state.targetSleepHours,
+    appData: state.appData,
+    events: state.events // Legacy compatibility alias
+  };
+
+  const jsonStr = JSON.stringify(exportObj, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const now = new Date();
+  const dateStr = formatDateKey(now).replace(/-/g, '');
+  const fileName = `time-visualizer-backup-${dateStr}.json`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('バックアップを保存しました', '💾');
+}
+
+function handleJSONFileSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const data = JSON.parse(event.target.result);
+      if (!data || typeof data !== 'object') throw new Error('不正なJSON形式です');
+
+      const normalizedData = normalizeToAppData(data);
+      const targetSleep = data.targetSleepHours || state.targetSleepHours;
+
+      let exportDateStr = '不明';
+      if (data.exportedAt) {
+        const d = new Date(data.exportedAt);
+        exportDateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      }
+
+      const daysCount = Object.keys(normalizedData).length;
+      let totalBlocks = 0;
+      Object.values(normalizedData).forEach(day => {
+        if (day && day.blocks) totalBlocks += day.blocks.length;
+      });
+
+      if (daysCount === 0 || totalBlocks === 0) {
+        showToast('ファイル内に有効な記録データが見つかりません', '⚠️');
+        return;
+      }
+
+      pendingImportData = {
+        appData: normalizedData,
+        targetSleepHours: targetSleep
+      };
+
+      const previewElem = document.getElementById('import-preview-info');
+      previewElem.innerHTML = `
+        <div><strong>ファイル名:</strong> ${escapeHtml(file.name)}</div>
+        <div><strong>バックアップ日時:</strong> ${exportDateStr}</div>
+        <div><strong>データ量:</strong> ${daysCount} 日分 (${totalBlocks} 件の時間ブロック)</div>
+        ${targetSleep ? `<div><strong>目標睡眠時間:</strong> ${targetSleep} 時間</div>` : ''}
+      `;
+
+      document.getElementById('import-modal-backdrop').classList.add('show');
+    } catch (err) {
+      console.error(err);
+      showToast('ファイルの読み込みに失敗しました（JSONが無効です）', '⚠️');
+    } finally {
+      e.target.value = '';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]);
+}
+
+function closeImportModal() {
+  document.getElementById('import-modal-backdrop').classList.remove('show');
+  pendingImportData = null;
+}
+
+function applyImport(mode) {
+  if (!pendingImportData) return;
+
+  if (mode === 'overwrite') {
+    state.appData = JSON.parse(JSON.stringify(pendingImportData.appData));
+    if (pendingImportData.targetSleepHours) {
+      state.targetSleepHours = pendingImportData.targetSleepHours;
+    }
+  } else if (mode === 'merge') {
+    const incoming = JSON.parse(JSON.stringify(pendingImportData.appData));
+    Object.keys(incoming).forEach(dayKey => {
+      state.appData[dayKey] = incoming[dayKey];
+    });
+    if (pendingImportData.targetSleepHours) {
+      state.targetSleepHours = pendingImportData.targetSleepHours;
+    }
+  }
+
+  saveState();
+  closeImportModal();
+
+  renderTimeline();
+  renderSleepAnalysis();
+  renderReports();
+
+  if (mode === 'overwrite') {
+    showToast('データを完全上書きで復元しました', '✓');
+  } else {
+    showToast('既存データと統合して復元しました', '🤝');
+  }
+}
+
+// PWA Service Worker Registration using Data/Blob URL for true standalone single-file functionality
+function initServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      self.addEventListener('install', (e) => self.skipWaiting());
+      self.addEventListener('activate', (e) => self.clients.claim());
+      self.addEventListener('fetch', (e) => {
+        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(err => {
+      // Local preview or restriction handling
+    });
+  }
+}
+
+// App Initialization
+window.addEventListener('DOMContentLoaded', () => {
+  const hasExistingData = loadState();
+  if (!hasExistingData || Object.keys(state.events).length === 0) {
+    generateSampleData();
+  }
+
+  initTimelineBg();
+  initModalUI();
+  initTimelineInteractions();
+  initEventListeners();
+  initServiceWorker();
+
+  renderTimeline();
+});
+</script>
+
+</body>
+</html>

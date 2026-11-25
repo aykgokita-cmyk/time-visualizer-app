@@ -1,0 +1,18 @@
+{
+  "name": "Time Visualizer",
+  "short_name": "Time Visualizer",
+  "description": "24時間バーチカルスケジュールで行動を可視化し、睡眠不足解消と自由時間捻出をサポートするPWAアプリ",
+  "start_url": "/mobile/",
+  "scope": "/mobile/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icons/icon.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
