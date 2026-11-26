@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ログイン - Time Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 text-slate-800 antialiased">
+
+  <div class="sm:mx-auto sm:w-full sm:max-w-md px-4">
+    <!-- ロゴ・ブランドヘッダー -->
+    <div class="text-center">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 mb-4">
+        <span class="text-2xl">⏳</span>
+      </div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Time Visualizer</h1>
+      <p class="mt-2 text-sm text-slate-500">
+        日々の時間の使い方と睡眠の質を、直感的に可視化・最適化
+      </p>
+    </div>
+
+    <!-- ログインカード -->
+    <div class="mt-8 bg-white py-8 px-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 rounded-3xl sm:px-10">
+      
+      <!-- エラーアラート表示 (URLクエリに ?error= がある場合) -->
+      <div id="errorAlert" class="hidden mb-6 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+        <span class="text-base leading-none">⚠️</span>
+        <div id="errorMessage" class="leading-relaxed font-medium">認証に失敗しました。</div>
+      </div>
+
+      <!-- デモモード案内バナー (Client ID 未設定時) -->
+      <div id="demoModeBanner" class="hidden mb-6 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+        <span class="text-base leading-none">💡</span>
+        <div class="leading-relaxed">
+          <strong class="font-bold block mb-0.5">開発用デモモード稼働中</strong>
+          Google Client ID が未設定のため、デモアカウント（田中・366日分のデータ）で直接ログイン体験が可能です。
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Googleでログイン ボタン -->
+        <a id="googleLoginBtn" href="/auth/google" class="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active:scale-[0.99]">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Googleアカウントでログイン</span>
+        </a>
+
+        <!-- デモユーザーでクイックログイン ボタン (デモ用) -->
+        <a id="demoLoginBtn" href="/dashboard" class="hidden w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold shadow-md transition active:scale-[0.99]">
+          <span>⚡</span>
+          <span>デモユーザー（田中）として入る</span>
+        </a>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-400">
+          ログインすることで、<a href="#" class="text-blue-600 hover:underline">利用規約</a>および<a href="#" class="text-blue-600 hover:underline">プライバシーポリシー</a>に同意したものとみなされます。
+        </p>
+      </div>
+
+    </div>
+
+    <!-- 画面切替リンク案内 -->
+    <div class="mt-6 text-center text-xs text-slate-500">
+      <span id="targetDeviceHint">PC用ダッシュボードへ接続します</span>
+    </div>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. クエリパラメータの解析
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get('returnTo') || '/dashboard';
+      const error = params.get('error');
+
+      // 戻り先リンクの設定
+      const googleBtn = document.getElementById('googleLoginBtn');
+      googleBtn.href = `/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
+
+      const demoBtn = document.getElementById('demoLoginBtn');
+      demoBtn.href = returnTo;
+
+      // デバイスヒント
+      const hint = document.getElementById('targetDeviceHint');
+      if (returnTo.includes('mobile')) {
+        hint.innerHTML = '📱 スマホPWA版へ接続します (<a href="/login?returnTo=/dashboard" class="text-blue-600 hover:underline">PC版はこちら</a>)';
+      } else {
+        hint.innerHTML = '💻 PCダッシュボード版へ接続します (<a href="/login?returnTo=/mobile" class="text-blue-600 hover:underline">スマホ版はこちら</a>)';
+      }
+
+      // エラーメッセージの表示
+      if (error) {
+        const alertBox = document.getElementById('errorAlert');
+        const msg = document.getElementById('errorMessage');
+        alertBox.classList.remove('hidden');
+
+        if (error === 'domain_not_allowed') {
+          msg.textContent = '許可されていないGoogleアカウントまたは組織ドメインです。管理者に連絡してください。';
+        } else if (error === 'auth_failed') {
+          msg.textContent = 'Google認証の検証に失敗しました。もう一度お試しください。';
+        } else if (error === 'unauthorized') {
+          msg.textContent = 'このページを表示するにはログインが必要です。';
+        } else {
+          msg.textContent = '認証処理中にエラーが発生しました: ' + decodeURIComponent(error);
+        }
+      }
+
+      // サーバーの認証構成状態を確認
+      try {
+        const res = await fetch('/auth/status');
+        if (res.ok) {
+          const status = await res.json();
+          if (status.isDemoMode) {
+            document.getElementById('demoModeBanner').classList.remove('hidden');
+            document.getElementById('demoLoginBtn').classList.remove('hidden');
+          }
+          if (status.authenticated) {
+            // すでにログイン済みの場合は自動リダイレクト
+            window.location.href = returnTo;
+          }
+        }
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>

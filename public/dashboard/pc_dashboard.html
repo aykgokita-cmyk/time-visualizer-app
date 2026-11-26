@@ -33,6 +33,8 @@
 
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
 
   <!-- Google Fonts: Inter, Noto Sans JP, Cinzel, Shippori Mincho -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,6 +82,14 @@
       transform: scale(1.35);
       z-index: 20;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .gh-cell.disabled {
+      cursor: default !important;
+      pointer-events: none !important;
+    }
+    .gh-cell.disabled:hover {
+      transform: none !important;
+      box-shadow: none !important;
     }
 
     /* ==============================================================
@@ -146,48 +156,61 @@
   <!-- ==============================================
        ヘッダー ＆ タブナビゲーション（モダン・クリーン）
        ============================================== -->
-  <header class="max-w-[1440px] w-full mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-    <!-- ロゴ・タイトル -->
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-100 flex-shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+  <header class="max-w-[1440px] w-full mx-auto mb-6 border-b border-slate-200 pb-3">
+    <!-- 1段目：ロゴ・タブ・ボタン横並び -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-2">
+      <!-- ロゴ・タイトル -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-100 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
+            Time Visualizer
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">Full-Stack Pro</span>
+          </h1>
+          <p class="text-xs text-slate-500">24時間記録 ＆ 睡眠・体感・満足度分析 ＆ 年間総括ダッシュボード</p>
+        </div>
       </div>
-      <div>
-        <h1 class="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
-          Time Visualizer
-          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">Full-Stack Pro</span>
-        </h1>
-        <p class="text-xs text-slate-500">24時間記録 ＆ 睡眠・体感・満足度分析 ＆ 年間総括ダッシュボード</p>
+
+      <!-- 3画面タブ切り替えナビゲーション -->
+      <nav class="flex items-center p-1 bg-slate-200/70 rounded-xl border border-slate-200">
+        <button type="button" data-tab="tab-daily" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white text-blue-600 shadow-sm">
+          <span>📅</span> 1. 日次記録・睡眠分析
+        </button>
+        <button type="button" data-tab="tab-weekly" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
+          <span>📊</span> 2. 週間カテゴリ分析
+        </button>
+        <button type="button" data-tab="tab-yearly" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
+          <span>🎯</span> 3. 年間実績・総括
+        </button>
+      </nav>
+
+      <!-- アクションボタン ＆ 接続状態 -->
+      <div class="flex items-center gap-3">
+        <span id="apiStatusBadge" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="apiStatusText">API同期中</span>
+        </span>
+        <button id="resetDemoBtn" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 font-medium transition shadow-sm hover:shadow flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          初期データにリセット
+        </button>
       </div>
     </div>
 
-    <!-- 3画面タブ切り替えナビゲーション -->
-    <nav class="flex items-center p-1 bg-slate-200/70 rounded-xl border border-slate-200">
-      <button type="button" data-tab="tab-daily" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white text-blue-600 shadow-sm">
-        <span>📅</span> 1. 日次記録・睡眠分析
-      </button>
-      <button type="button" data-tab="tab-weekly" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
-        <span>📊</span> 2. 週間カテゴリ分析
-      </button>
-      <button type="button" data-tab="tab-yearly" class="tab-nav-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900">
-        <span>🎯</span> 3. 年間実績・総括
-      </button>
-    </nav>
-    
-    <!-- アクションボタン ＆ 接続状態 -->
-    <div class="flex items-center gap-3">
-      <span id="apiStatusBadge" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="apiStatusText">API同期中</span>
-      </span>
-      <button id="resetDemoBtn" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-600 font-medium transition shadow-sm hover:shadow flex items-center gap-1.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        初期データにリセット
-      </button>
+    <!-- 2段目：ユーザー情報（左端・独立行） -->
+    <div id="pcUserBadge" class="flex items-center gap-2 mt-3 ml-3 pl-3 border-l-2 border-slate-200">
+      <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs" id="pcUserAvatar">田</div>
+      <div class="flex flex-col">
+        <span id="pcUserDisplayName" class="text-xs font-bold text-slate-700 leading-tight max-w-[120px] truncate">田中 健一</span>
+        <span id="pcUserSub" class="text-[10px] text-slate-400 leading-tight">ログイン中</span>
+      </div>
+      <a href="/auth/logout?returnTo=/dashboard" class="ml-1 text-xs px-2 py-1 rounded-md border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition font-medium" title="ログアウト">ログアウト</a>
     </div>
   </header>
 
@@ -231,7 +254,7 @@
             <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <span>⚡</span> 起床時の体感スコア (1〜5)
             </label>
-            <span id="scoreLabel" class="text-xs font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">3: 😐 普通</span>
+            <span id="scoreLabel" class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">未入力 (タップして選択)</span>
           </div>
           <div class="grid grid-cols-5 gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100" id="scoreButtonGroup">
             <button type="button" data-score="1" class="score-btn flex flex-col items-center justify-center py-2 rounded-lg text-lg hover:bg-white transition-all text-slate-400 hover:text-slate-800"><span>😫</span><span class="text-[10px] font-bold mt-0.5">1</span></button>
@@ -453,8 +476,8 @@
                 <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <span>💖</span> その日の満足度 (1〜5)
                 </span>
-                <span id="satisfactionInlineLabel" class="text-xs font-bold text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full border border-pink-100">
-                  5: ❤️ 最高に満足！
+                <span id="satisfactionInlineLabel" class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                  未入力 (タップして選択)
                 </span>
               </div>
               
@@ -617,9 +640,12 @@
          ============================================================== -->
     <div class="bg-white rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100">
       <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <span>📋</span> 曜日別 行動・睡眠・スコア詳細一覧
-        </h3>
+        <div class="flex items-center gap-2.5">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <span>📋</span> 曜日別 行動・睡眠・スコア詳細一覧
+          </h3>
+          <span id="weeklyRangeLabel" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"></span>
+        </div>
         <span class="text-xs text-slate-400">※ 表の行をクリックすると、その日の日次記録画面へジャンプします</span>
       </div>
       <div class="overflow-x-auto">
@@ -662,11 +688,11 @@
           <div class="absolute top-0 left-0 w-1.5 h-full bg-slate-500"></div>
           <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">今年仕事に費やした総時間</span>
           <div class="flex items-baseline gap-1.5 mt-1">
-            <span class="text-3xl font-extrabold text-slate-800">1,850</span><span class="text-xs font-bold text-slate-400">時間</span>
+            <span id="yearlyTotalWork" class="text-3xl font-extrabold text-slate-800">0</span><span class="text-xs font-bold text-slate-400">時間</span>
           </div>
           <div class="flex items-center justify-between mt-3 text-[11px]">
-            <span class="text-slate-500">年間上限: 1,900h</span>
-            <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">健全範囲内 達成</span>
+            <span id="yearlyWorkSubtext" class="text-slate-500">年間上限: 1,900h</span>
+            <span id="yearlyWorkBadge" class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">健全範囲内 達成</span>
           </div>
         </div>
 
@@ -674,11 +700,11 @@
           <div class="absolute top-0 left-0 w-1.5 h-full bg-pink-500"></div>
           <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">趣味に没頭した時間</span>
           <div class="flex items-baseline gap-1.5 mt-1">
-            <span class="text-3xl font-extrabold text-pink-700">420</span><span class="text-xs font-bold text-slate-400">時間</span>
+            <span id="yearlyTotalHobby" class="text-3xl font-extrabold text-pink-700">0</span><span class="text-xs font-bold text-slate-400">時間</span>
           </div>
           <div class="flex items-center justify-between mt-3 text-[11px]">
-            <span class="text-slate-500">年間目標: 400h以上</span>
-            <span class="font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">105.0% 達成</span>
+            <span id="yearlyHobbySubtext" class="text-slate-500">年間目標: 400h以上</span>
+            <span id="yearlyHobbyBadge" class="font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">100.0% 達成</span>
           </div>
         </div>
 
@@ -686,11 +712,11 @@
           <div class="absolute top-0 left-0 w-1.5 h-full bg-sky-500"></div>
           <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">年間総睡眠時間</span>
           <div class="flex items-baseline gap-1.5 mt-1">
-            <span class="text-3xl font-extrabold text-sky-700">2,600</span><span class="text-xs font-bold text-slate-400">時間</span>
+            <span id="yearlyTotalSleep" class="text-3xl font-extrabold text-sky-700">0</span><span class="text-xs font-bold text-slate-400">時間</span>
           </div>
           <div class="flex items-center justify-between mt-3 text-[11px]">
-            <span class="text-slate-500">年間平均: 7.1時間 / 日</span>
-            <span class="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">96.3% 良好</span>
+            <span id="yearlySleepSubtext" class="text-slate-500">年間平均: 7.0時間 / 日</span>
+            <span id="yearlySleepBadge" class="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">良好</span>
           </div>
         </div>
 
@@ -698,11 +724,11 @@
           <div class="absolute top-0 left-0 w-1.5 h-full bg-purple-500"></div>
           <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">年間総自由時間 (趣味+ネット)</span>
           <div class="flex items-baseline gap-1.5 mt-1">
-            <span class="text-3xl font-extrabold text-purple-700">1,180</span><span class="text-xs font-bold text-slate-400">時間</span>
+            <span id="yearlyTotalFree" class="text-3xl font-extrabold text-purple-700">0</span><span class="text-xs font-bold text-slate-400">時間</span>
           </div>
           <div class="flex items-center justify-between mt-3 text-[11px]">
-            <span class="text-slate-500">年間総時間の 13.5%</span>
-            <span class="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">目標確保</span>
+            <span id="yearlyFreeSubtext" class="text-slate-500">年間総時間の 13.5%</span>
+            <span id="yearlyFreeBadge" class="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">目標確保</span>
           </div>
         </div>
       </div>
@@ -715,56 +741,56 @@
               <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
                 <span>🎯</span> 今年の目標 と 最終実績 比較統計
               </h3>
-              <span class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">総合達成度: 97.2%</span>
+              <span id="yearlyOverallAchievementBadge" class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">総合達成度: --%</span>
             </div>
             <p class="text-xs text-slate-500 mb-5">設定した年間マイルストーンに対する着地実績</p>
 
             <div class="space-y-4">
               <div>
                 <div class="flex justify-between items-center text-xs mb-1">
-                  <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 睡眠時間確保（目標: 2,700時間 / 実績: 2,600時間）</span>
-                  <span class="font-bold text-sky-700">96.3%</span>
+                  <span id="yearlySleepGoalText" class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> 睡眠時間確保（目標: 2,700時間 / 実績: --時間）</span>
+                  <span id="yearlySleepGoalPercent" class="font-bold text-sky-700">--%</span>
                 </div>
                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                  <div class="bg-gradient-to-r from-sky-400 to-sky-600 h-full rounded-full" style="width: 96.3%;"></div>
+                  <div id="yearlySleepProgressBar" class="bg-gradient-to-r from-sky-400 to-sky-600 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
               </div>
 
               <div>
                 <div class="flex justify-between items-center text-xs mb-1">
-                  <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> 仕事・業務抑制（上限: 1,900時間 / 実績: 1,850時間）</span>
-                  <span class="font-bold text-emerald-700">適正達成 (-50h)</span>
+                  <span id="yearlyWorkGoalText" class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> 仕事・業務抑制（上限: 1,900時間 / 実績: --時間）</span>
+                  <span id="yearlyWorkGoalStatus" class="font-bold text-emerald-700">適正達成</span>
                 </div>
                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                  <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full" style="width: 97.4%;"></div>
+                  <div id="yearlyWorkProgressBar" class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
               </div>
 
               <div>
                 <div class="flex justify-between items-center text-xs mb-1">
-                  <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span> 趣味没頭時間（目標: 400時間 / 実績: 420時間）</span>
-                  <span class="font-bold text-pink-700">105.0% 達成</span>
+                  <span id="yearlyHobbyGoalText" class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span> 趣味没頭時間（目標: 400時間 / 実績: --時間）</span>
+                  <span id="yearlyHobbyGoalPercent" class="font-bold text-pink-700">--% 達成</span>
                 </div>
                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                  <div class="bg-gradient-to-r from-pink-400 to-pink-600 h-full rounded-full" style="width: 100%;"></div>
+                  <div id="yearlyHobbyProgressBar" class="bg-gradient-to-r from-pink-400 to-pink-600 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
               </div>
 
               <div>
                 <div class="flex justify-between items-center text-xs mb-1">
-                  <span class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 体感好調日率（スコア4・5の割合 目標: 65% / 実績: 68.2%）</span>
-                  <span class="font-bold text-amber-700">達成 (+3.2%)</span>
+                  <span id="yearlyGoodDayGoalText" class="font-bold text-slate-700 flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 体感好調日率（スコア4・5の割合 目標: 65% / 実績: --%）</span>
+                  <span id="yearlyGoodDayGoalStatus" class="font-bold text-amber-700">達成</span>
                 </div>
                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                  <div class="bg-gradient-to-r from-amber-400 to-amber-600 h-full rounded-full" style="width: 100%;"></div>
+                  <div id="yearlyGoodDayProgressBar" class="bg-gradient-to-r from-amber-400 to-amber-600 h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>集計期間: 2026年1月1日 〜 12月31日</span>
-            <span class="text-emerald-700 font-semibold">年間健康基準クリア</span>
+            <span id="yearlyPeriodFooterText">集計期間: 2026年1月1日 〜 12月31日</span>
+            <span id="yearlyPeriodStatusBadge" class="text-emerald-700 font-semibold">年間健康基準クリア</span>
           </div>
         </div>
 
@@ -774,7 +800,7 @@
               <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
                 <span>🎨</span> 年間自由時間の内訳
               </h3>
-              <span class="text-[11px] font-semibold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">総計 1,180時間</span>
+              <span id="yearlyFreeTimePieTotal" class="text-[11px] font-semibold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">総計 --時間</span>
             </div>
             <p class="text-xs text-slate-500 mb-3">自由時間（趣味・リラックス・ネット等）の配分</p>
             <div class="relative w-full h-[240px] flex items-center justify-center">
@@ -782,22 +808,22 @@
             </div>
           </div>
 
-          <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-              <span class="font-medium text-pink-900 truncate">🎨 創作・開発</span>
-              <span class="font-bold text-pink-700 ml-1">420h</span>
+          <div id="yearlyCategoryBreakdownGrid" class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+            <div class="flex items-center justify-between p-2 rounded-lg bg-pink-50/60 border border-pink-100">
+              <span class="font-medium text-pink-900 truncate">🎨 創作・個人開発</span>
+              <span class="font-bold text-pink-700 ml-1">--h</span>
             </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
+            <div class="flex items-center justify-between p-2 rounded-lg bg-purple-50/60 border border-purple-100">
               <span class="font-medium text-purple-900 truncate">📚 読書・勉強</span>
-              <span class="font-bold text-purple-700 ml-1">260h</span>
+              <span class="font-bold text-purple-700 ml-1">--h</span>
             </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-              <span class="font-medium text-indigo-900 truncate">🎬 映画・アニメ</span>
-              <span class="font-bold text-indigo-700 ml-1">210h</span>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-indigo-50/60 border border-indigo-100">
+              <span class="font-medium text-indigo-900 truncate">🎬 映画・ゲーム・音楽</span>
+              <span class="font-bold text-indigo-700 ml-1">--h</span>
             </div>
-            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-              <span class="font-medium text-amber-900 truncate">📱 ネット・SNS</span>
-              <span class="font-bold text-amber-700 ml-1">290h</span>
+            <div class="flex items-center justify-between p-2 rounded-lg bg-amber-50/60 border border-amber-100">
+              <span class="font-medium text-amber-900 truncate">📱 ネット・SNS・散策</span>
+              <span class="font-bold text-amber-700 ml-1">--h</span>
             </div>
           </div>
         </div>
@@ -836,13 +862,15 @@
 
             <!-- 凡例 -->
             <div class="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-              <span class="text-[10px]">少/低</span>
+              <span class="text-[10px] text-slate-400">未記録</span>
+              <span class="w-3 h-3 rounded-sm bg-[#F8FAFC] border border-[#CBD5E1]"></span>
+              <span class="text-[10px] ml-1">低 (1)</span>
               <span id="hmLegend1" class="w-3 h-3 rounded-sm bg-[#E0F2FE]"></span>
               <span id="hmLegend2" class="w-3 h-3 rounded-sm bg-[#BAE6FD]"></span>
               <span id="hmLegend3" class="w-3 h-3 rounded-sm bg-[#38BDF8]"></span>
               <span id="hmLegend4" class="w-3 h-3 rounded-sm bg-[#0284C7]"></span>
               <span id="hmLegend5" class="w-3 h-3 rounded-sm bg-[#0369A1]"></span>
-              <span class="text-[10px]">多/高</span>
+              <span class="text-[10px]">高 (5)</span>
             </div>
 
           </div>
@@ -1234,8 +1262,8 @@
     // アプリケーション状態
     let appData = {};
     let selectedDate = '2026-11-15';
-    let currentScore = 3;
-    let currentSatisfaction = 5;
+    let currentScore = null;
+    let currentSatisfaction = null;
     let isApiConnected = false;
     let currentDashboardMode = 'mode_1';
     let currentHeatmapType = 'sleep'; // 'sleep' or 'satisfaction'
@@ -1254,7 +1282,9 @@
       initEventListeners();
       
       await checkApiConnection();
+      await fetchCurrentUserInfo();
       await loadAppData();
+      initSocketSync();
 
       const datePicker = document.getElementById('datePicker');
       datePicker.value = selectedDate;
@@ -1295,9 +1325,12 @@
           if (targetTabId === 'tab-daily' && sleepScoreChartInstance) {
             sleepScoreChartInstance.resize();
           } else if (targetTabId === 'tab-weekly') {
+            renderWeeklyCharts();
             if (weeklyPieChartInstance) weeklyPieChartInstance.resize();
             if (weeklyLineChartInstance) weeklyLineChartInstance.resize();
           } else if (targetTabId === 'tab-yearly') {
+            renderYearlyCharts();
+            renderGitHubHeatmap();
             if (yearlyPieChartInstance) yearlyPieChartInstance.resize();
           }
         });
@@ -1402,6 +1435,11 @@
       const startDayOfWeek = startDate.getDay(); // 0:日, 4:木
       const totalCells = 53 * 7;
       
+      const allDates = Object.keys(appData).sort();
+      const latestDateStr = allDates.length > 0 ? allDates[allDates.length - 1] : toLocalDateStr(new Date());
+      const todayStr = toLocalDateStr(new Date());
+      const maxRecordedDate = latestDateStr > todayStr ? latestDateStr : todayStr;
+
       for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
         cell.className = 'gh-cell';
@@ -1410,57 +1448,81 @@
         if (dayOffset >= 0 && dayOffset < 365) {
           const currentDate = new Date(startDate);
           currentDate.setDate(startDate.getDate() + dayOffset);
-          const dateStr = currentDate.toISOString().split('T')[0];
+          const dateStr = toLocalDateStr(currentDate);
           
           const log = appData[dateStr];
-          let val = 0;
+          const isFuture = (dateStr > maxRecordedDate);
+
+          let val = null;
           let notePreview = '';
 
-          if (currentHeatmapType === 'sleep') {
-            val = log ? log.score : (pseudoHash(dateStr) % 5 + 1);
-            notePreview = log?.sleep_note || log?.note || '快眠';
-          } else {
-            val = log ? (log.satisfaction || 3) : ((pseudoHash(dateStr + 'sat') % 5) + 1);
-            notePreview = log?.diary_note || '充実した一日';
+          if (log) {
+            if (currentHeatmapType === 'sleep') {
+              if (log.score !== null && log.score !== undefined) {
+                val = log.score;
+                notePreview = log.sleep_note || log.note || '快眠';
+              }
+            } else {
+              if (log.satisfaction !== null && log.satisfaction !== undefined) {
+                val = log.satisfaction;
+                notePreview = log.diary_note || log.note || '充実した一日';
+              }
+            }
           }
 
-          cell.style.backgroundColor = getHeatmapCellColor(val, currentHeatmapType);
-          cell.setAttribute('title', `${dateStr} [${currentHeatmapType === 'sleep' ? '体感' : '満足度'}: ${val}] - ${notePreview}`);
-          
-          cell.addEventListener('click', () => {
-            selectedDate = dateStr;
-            document.getElementById('datePicker').value = dateStr;
+          if (val !== null && val !== undefined) {
+            cell.style.backgroundColor = getHeatmapCellColor(val, currentHeatmapType);
+            cell.setAttribute('title', `${dateStr} [${currentHeatmapType === 'sleep' ? '体感' : '満足度'}: ${val}] - ${notePreview}`);
             
-            const dailyTabBtn = document.querySelector('[data-tab="tab-daily"]');
-            if (dailyTabBtn) dailyTabBtn.click();
-            
-            renderAll();
-          });
+            cell.addEventListener('click', () => {
+              selectedDate = dateStr;
+              document.getElementById('datePicker').value = dateStr;
+              const dailyTabBtn = document.querySelector('[data-tab="tab-daily"]');
+              if (dailyTabBtn) dailyTabBtn.click();
+              renderAll();
+            });
+          } else {
+            // スコアまたは満足度が未入力の日（行動記録の有無に関わらず未入力なら薄グレー）
+            cell.style.backgroundColor = '#F8FAFC';
+            cell.style.border = '1px solid #E2E8F0';
+
+            if (isFuture) {
+              // 未来日: 非活性（クリック不可）
+              cell.classList.add('disabled');
+              cell.style.opacity = '0.5';
+              cell.setAttribute('title', `${dateStr} [未記録 / 未来日]`);
+            } else {
+              // 過去の未記録・未入力日: クリックで日次入力へ遷移可能
+              const typeLabel = currentHeatmapType === 'sleep' ? '体感' : '満足度';
+              cell.setAttribute('title', `${dateStr} [${typeLabel}: 未入力] (クリックして日次記録を入力)`);
+              cell.addEventListener('click', () => {
+                selectedDate = dateStr;
+                document.getElementById('datePicker').value = dateStr;
+                const dailyTabBtn = document.querySelector('[data-tab="tab-daily"]');
+                if (dailyTabBtn) dailyTabBtn.click();
+                renderAll();
+              });
+            }
+          }
         } else {
+          // カレンダー範囲外（パディング）
           cell.style.backgroundColor = '#F1F5F9';
-          cell.style.opacity = '0.3';
+          cell.style.opacity = '0.2';
           cell.style.cursor = 'default';
+          cell.classList.add('disabled');
         }
 
         container.appendChild(cell);
       }
     }
 
-    function pseudoHash(str) {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash);
-    }
-
     function getHeatmapCellColor(val, type) {
+      if (!val || val === 0) return '#F8FAFC';
       if (type === 'sleep') {
-        const colors = ['#F1F5F9', '#E0F2FE', '#BAE6FD', '#38BDF8', '#0284C7', '#0369A1'];
+        const colors = ['#F8FAFC', '#E0F2FE', '#BAE6FD', '#38BDF8', '#0284C7', '#0369A1'];
         return colors[val] || '#E0F2FE';
       } else {
-        const colors = ['#F1F5F9', '#FFE4E6', '#FECDD3', '#FB7185', '#E11D48', '#9F1239'];
+        const colors = ['#F8FAFC', '#FFE4E6', '#FECDD3', '#FB7185', '#E11D48', '#9F1239'];
         return colors[val] || '#FFE4E6';
       }
     }
@@ -1482,6 +1544,26 @@
       isApiConnected = false;
       badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5';
       text.textContent = 'ローカル同期中';
+    }
+
+    // --- ログインユーザー情報取得 ---
+    async function fetchCurrentUserInfo() {
+      try {
+        const res = await fetch('/api/me');
+        if (res.ok) {
+          const user = await res.json();
+          if (user && user.authenticated) {
+            const nameEl = document.getElementById('pcUserDisplayName');
+            const avatarEl = document.getElementById('pcUserAvatar');
+            const subEl = document.getElementById('pcUserSub');
+            if (nameEl) nameEl.textContent = user.display_name || user.email || 'ユーザー';
+            if (avatarEl) avatarEl.textContent = (user.display_name || user.email || 'ユ')[0].toUpperCase();
+            if (subEl) subEl.textContent = user.is_demo ? 'デモ利用中' : (user.email || 'ログイン中');
+          }
+        }
+      } catch (e) {
+        console.warn('ユーザー情報の取得をスキップしました:', e);
+      }
     }
 
     // --- データ読み込み ＆ 初期化 (API優先、フォールバックでlocalStorage) ---
@@ -1535,6 +1617,70 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
     }
 
+    // --- Socket.io リアルタイム同期 ---
+    let socket = null;
+    function initSocketSync() {
+      if (typeof io === 'undefined') {
+        console.warn('[Socket.io] クライアントライブラリがロードされていません');
+        return;
+      }
+      try {
+        socket = io();
+
+        socket.on('connect', () => {
+          console.log('[Socket.io] サーバー接続成功 (ID:', socket.id, ')');
+          // デモユーザー1の専用ルームに参加
+          socket.emit('join_user', 1);
+
+          const badge = document.getElementById('apiStatusBadge');
+          const text = document.getElementById('apiStatusText');
+          if (badge && text) {
+            badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-sm';
+            text.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> リアルタイム同期中 (Socket.io)';
+          }
+        });
+
+        socket.on('data_updated', async (payload) => {
+          console.log('[Socket.io] データ更新通知を受信:', payload);
+          // 最新データを再取得して自動反映
+          await loadAppData();
+          loadDayDataToForm(selectedDate);
+          renderAll();
+          renderGitHubHeatmap();
+          showSyncToast(payload);
+        });
+
+        socket.on('disconnect', () => {
+          console.log('[Socket.io] 切断されました');
+          const badge = document.getElementById('apiStatusBadge');
+          const text = document.getElementById('apiStatusText');
+          if (badge && text) {
+            badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5';
+            text.textContent = 'オフライン (再接続待機中)';
+          }
+        });
+      } catch (e) {
+        console.error('[Socket.io] 初期化エラー:', e);
+      }
+    }
+
+    function showSyncToast(payload) {
+      let toast = document.getElementById('socketSyncToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'socketSyncToast';
+        toast.className = 'fixed bottom-5 right-5 z-50 bg-slate-900/90 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700 transition-all duration-300 opacity-0 translate-y-2 pointer-events-none';
+        document.body.appendChild(toast);
+      }
+      const typeLabel = payload.type === 'daily_log' ? '日次記録・睡眠メモ' : payload.type === 'time_blocks' ? 'タイムブロック' : payload.type === 'user_settings' ? 'ダッシュボード設定' : '行動データ';
+      toast.innerHTML = `<span class="text-emerald-400 font-bold">⚡</span> <span>スマホ端末から<strong>${typeLabel}</strong>の更新を受信し、画面を同期しました</span>`;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      clearTimeout(showSyncToast.timer);
+      showSyncToast.timer = setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+      }, 3000);
+    }
+
     // --- スコアボタン（朝の睡眠体感）の初期化 ---
     function initScoreButtons() {
       const buttons = document.querySelectorAll('#scoreButtonGroup .score-btn');
@@ -1551,7 +1697,7 @@
       const buttons = document.querySelectorAll('#scoreButtonGroup .score-btn');
       buttons.forEach(btn => {
         const btnScore = parseInt(btn.getAttribute('data-score'), 10);
-        if (btnScore === score) {
+        if (score !== null && score !== undefined && btnScore === score) {
           btn.className = 'score-btn flex flex-col items-center justify-center py-2 rounded-lg text-lg bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-sm transition-all';
         } else {
           btn.className = 'score-btn flex flex-col items-center justify-center py-2 rounded-lg text-lg hover:bg-slate-100 transition-all text-slate-400 hover:text-slate-800';
@@ -1559,8 +1705,14 @@
       });
 
       const label = document.getElementById('scoreLabel');
-      const info = SCORE_INFO[score] || SCORE_INFO[3];
-      label.textContent = `${score}: ${info.emoji} ${info.text.split(' ')[0]}`;
+      if (score !== null && score !== undefined && SCORE_INFO[score]) {
+        const info = SCORE_INFO[score];
+        label.textContent = `${score}: ${info.emoji} ${info.text.split(' ')[0]}`;
+        label.className = 'text-xs font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100';
+      } else {
+        label.textContent = '未入力 (タップして選択)';
+        label.className = 'text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200';
+      }
     }
 
     // --- 満足度ボタン（夜の一日充実度）の初期化 ---
@@ -1579,7 +1731,7 @@
       const buttons = document.querySelectorAll('#satisfactionInlineButtonGroup .sat-inline-btn');
       buttons.forEach(btn => {
         const btnSat = parseInt(btn.getAttribute('data-sat'), 10);
-        if (btnSat === sat) {
+        if (sat !== null && sat !== undefined && btnSat === sat) {
           btn.className = 'sat-inline-btn flex flex-col items-center justify-center py-2 rounded-lg text-base bg-pink-100 text-pink-800 font-bold border border-pink-300 shadow-sm transition-all';
         } else {
           btn.className = 'sat-inline-btn flex flex-col items-center justify-center py-2 rounded-lg text-base hover:bg-white transition-all text-slate-400 hover:text-slate-800 bg-white/70 border border-slate-200';
@@ -1587,8 +1739,14 @@
       });
 
       const label = document.getElementById('satisfactionInlineLabel');
-      const info = SATISFACTION_INFO[sat] || SATISFACTION_INFO[5];
-      label.textContent = `${sat}: ${info.emoji} ${info.text.split(' ')[1] || '満足'}`;
+      if (sat !== null && sat !== undefined && SATISFACTION_INFO[sat]) {
+        const info = SATISFACTION_INFO[sat];
+        label.textContent = `${sat}: ${info.emoji} ${info.text.split(' ')[1] || '満足'}`;
+        label.className = 'text-xs font-bold text-pink-600 bg-pink-50 px-2.5 py-0.5 rounded-full border border-pink-100';
+      } else {
+        label.textContent = '未入力 (タップして選択)';
+        label.className = 'text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200';
+      }
     }
 
     // --- イベントリスナー設定 ---
@@ -1676,9 +1834,9 @@
     }
 
     function shiftDate(offsetDays) {
-      const current = new Date(selectedDate);
+      const current = new Date(selectedDate + 'T00:00:00');
       current.setDate(current.getDate() + offsetDays);
-      selectedDate = current.toISOString().split('T')[0];
+      selectedDate = toLocalDateStr(current);
       document.getElementById('datePicker').value = selectedDate;
       loadDayDataToForm(selectedDate);
       renderAll();
@@ -1687,15 +1845,15 @@
     // --- 選択日のデータをフォームへ反映 ---
     function loadDayDataToForm(dateStr) {
       const dayData = appData[dateStr] || {
-        score: 3,
-        satisfaction: 3,
+        score: null,
+        satisfaction: null,
         sleep_note: '',
         diary_note: '',
         blocks: []
       };
 
-      setScore(dayData.score || 3);
-      setSatisfaction(dayData.satisfaction || 3);
+      setScore(dayData.score !== undefined && dayData.score !== null ? dayData.score : null);
+      setSatisfaction(dayData.satisfaction !== undefined && dayData.satisfaction !== null ? dayData.satisfaction : null);
       
       document.getElementById('sleepNote').value = dayData.sleep_note || dayData.note || '';
       document.getElementById('diaryNoteInput').value = dayData.diary_note || '';
@@ -2014,7 +2172,7 @@
         bestSleepEl.textContent = '7.5';
       }
 
-      const weekDates = getWeekDates('2026-11-15');
+      const weekDates = getWeekDates(selectedDate);
       let weekSleepTotal = 0;
       let weekDaysCount = 0;
 
@@ -2035,7 +2193,18 @@
     function getDayMetrics(dateStr) {
       const dayData = appData[dateStr];
       if (!dayData || !dayData.blocks) {
-        return { sleepHours: 0, freeHours: 0, workHours: 0, transportHours: 0, lifeHours: 0, mealHours: 0, hobbyHours: 0, netHours: 0, score: 3, satisfaction: 3 };
+        return {
+          sleepHours: 0,
+          freeHours: 0,
+          workHours: 0,
+          transportHours: 0,
+          lifeHours: 0,
+          mealHours: 0,
+          hobbyHours: 0,
+          netHours: 0,
+          score: (dayData && dayData.score !== undefined && dayData.score !== null) ? dayData.score : null,
+          satisfaction: (dayData && dayData.satisfaction !== undefined && dayData.satisfaction !== null) ? dayData.satisfaction : null
+        };
       }
 
       let sleep = 0, hobby = 0, net = 0, work = 0, transport = 0, life = 0, meal = 0;
@@ -2060,25 +2229,28 @@
         mealHours: Math.round(meal * 10) / 10,
         hobbyHours: Math.round(hobby * 10) / 10,
         netHours: Math.round(net * 10) / 10,
-        score: dayData.score || 3,
-        satisfaction: dayData.satisfaction || 3
+        score: (dayData.score !== undefined && dayData.score !== null) ? dayData.score : null,
+        satisfaction: (dayData.satisfaction !== undefined && dayData.satisfaction !== null) ? dayData.satisfaction : null
       };
     }
 
     // --- 複合グラフ（睡眠時間 × 体感スコア）の描画 ---
     function renderSleepScoreChart() {
       const ctx = document.getElementById('sleepScoreChart').getContext('2d');
-      const weekDates = getWeekDates('2026-11-15');
+      const weekDates = getWeekDates(selectedDate);
 
-      const labels = ['月', '火', '水', '木', '金', '土', '日'];
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const labels = weekDates.map(dStr => {
+        const dt = new Date(dStr + 'T00:00:00');
+        return `${dt.getMonth() + 1}/${dt.getDate()}(${dayNames[dt.getDay()]})`;
+      });
       const sleepData = [];
       const scoreData = [];
 
       weekDates.forEach(date => {
         const m = getDayMetrics(date);
         sleepData.push(m.sleepHours);
-        const log = appData[date];
-        scoreData.push(log ? log.score : 3);
+        scoreData.push(m.score !== null ? m.score : null);
       });
 
       if (sleepScoreChartInstance) {
@@ -2108,6 +2280,7 @@
               backgroundColor: '#F43F5E',
               borderWidth: 3,
               tension: 0.35,
+              spanGaps: true,
               pointBackgroundColor: '#FFFFFF',
               pointBorderColor: '#F43F5E',
               pointBorderWidth: 2.5,
@@ -2185,9 +2358,24 @@
 
     // --- 週間分析グラフ群 ＆ 【復活】曜日別詳細一覧テーブル ---
     function renderWeeklyCharts() {
-      const weekDates = getWeekDates('2026-11-15');
+      const weekDates = getWeekDates(selectedDate);
+      const allDates = Object.keys(appData).sort();
+      const latestDate = allDates.length > 0 ? allDates[allDates.length - 1] : '2026-11-15';
+
+      // 週間詳細一覧のヘッダーバッジ表示更新
+      const rangeLabel = document.getElementById('weeklyRangeLabel');
+      if (rangeLabel && weekDates.length > 0) {
+        const isDefault = (!selectedDate || selectedDate === latestDate);
+        if (isDefault) {
+          rangeLabel.textContent = `${weekDates[0]} 〜 ${weekDates[weekDates.length - 1]} (直近1週間)`;
+        } else {
+          rangeLabel.textContent = `${weekDates[0]} 〜 ${weekDates[weekDates.length - 1]} (${formatDateJp(selectedDate)} を中心に表示中)`;
+        }
+      }
+
       let totalSleep = 0, totalWork = 0, totalTransport = 0, totalHobby = 0, totalNet = 0, totalMeal = 0, totalLife = 0;
       let totalScore = 0;
+      let totalScoreCount = 0;
       let maxSleep = 0;
       let maxSleepDays = [];
       const sleepLineData = [];
@@ -2206,7 +2394,10 @@
         totalNet += m.netHours;
         totalMeal += m.mealHours;
         totalLife += m.lifeHours;
-        totalScore += m.score;
+        if (m.score !== null && m.score !== undefined) {
+          totalScore += m.score;
+          totalScoreCount++;
+        }
 
         if (m.sleepHours > maxSleep) {
           maxSleep = m.sleepHours;
@@ -2221,15 +2412,28 @@
         // テーブル行の追加
         if (tableBody) {
           const tr = document.createElement('tr');
-          tr.className = 'hover:bg-blue-50/50 transition cursor-pointer font-mono';
+          const isSelected = (date === selectedDate);
+          if (isSelected) {
+            tr.className = 'bg-blue-50/90 font-bold border-l-4 border-blue-600 transition cursor-pointer font-mono shadow-sm';
+          } else {
+            tr.className = 'hover:bg-slate-50 transition cursor-pointer font-mono';
+          }
           tr.title = `${date} の日次記録へジャンプ`;
 
-          const sInfo = SCORE_INFO[m.score] || SCORE_INFO[3];
-          const satInfo = SATISFACTION_INFO[m.satisfaction] || SATISFACTION_INFO[3];
+          const sInfo = m.score ? SCORE_INFO[m.score] : null;
+          const satInfo = m.satisfaction ? SATISFACTION_INFO[m.satisfaction] : null;
+
+          const scoreBadgeHtml = sInfo
+            ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">${m.score} ${sInfo.emoji}</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-xs text-slate-400 bg-slate-50 border border-slate-200">未設定</span>`;
+
+          const satBadgeHtml = satInfo
+            ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-pink-50 text-pink-600 border border-pink-100">${m.satisfaction} ${satInfo.emoji}</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-xs text-slate-400 bg-slate-50 border border-slate-200">未設定</span>`;
 
           tr.innerHTML = `
-            <td class="p-3 font-semibold text-slate-800 font-sans flex items-center gap-1.5">
-              <span>📅</span> ${formatDateJp(date)}
+            <td class="p-3 font-semibold ${isSelected ? 'text-blue-900' : 'text-slate-800'} font-sans flex items-center gap-1.5">
+              <span>${isSelected ? '👉' : '📅'}</span> ${formatDateJp(date)} ${isSelected ? '<span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded ml-1 font-sans">選択中</span>' : ''}
             </td>
             <td class="p-3 font-bold text-sky-600">${m.sleepHours}h</td>
             <td class="p-3 text-emerald-700">${m.lifeHours}h</td>
@@ -2238,16 +2442,8 @@
             <td class="p-3 text-amber-800 font-medium">${m.transportHours}h</td>
             <td class="p-3 text-pink-700">${m.hobbyHours}h</td>
             <td class="p-3 text-purple-700">${m.netHours}h</td>
-            <td class="p-3 font-sans">
-              <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100">
-                ${m.score} ${sInfo.emoji}
-              </span>
-            </td>
-            <td class="p-3 font-sans">
-              <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-pink-50 text-pink-600 border border-pink-100">
-                ${m.satisfaction} ${satInfo.emoji}
-              </span>
-            </td>
+            <td class="p-3 font-sans">${scoreBadgeHtml}</td>
+            <td class="p-3 font-sans">${satBadgeHtml}</td>
           `;
 
           // 行クリックで該当日の日次記録へ切り替え
@@ -2268,7 +2464,7 @@
       document.getElementById('wkTotalFree').textContent = (totalHobby + totalNet).toFixed(1);
       document.getElementById('wkBestDay').textContent = maxSleep.toFixed(1);
       document.getElementById('wkBestDayLabel').textContent = maxSleepDays.join(', ') || '-';
-      document.getElementById('wkAvgScore').textContent = (totalScore / (weekDates.length || 1)).toFixed(1);
+      document.getElementById('wkAvgScore').textContent = totalScoreCount > 0 ? (totalScore / totalScoreCount).toFixed(1) : '-';
 
       document.getElementById('pieLegendSleep').textContent = `${totalSleep.toFixed(1)}h`;
       document.getElementById('pieLegendWork').textContent = `${totalWork.toFixed(1)}h`;
@@ -2308,10 +2504,16 @@
       const lineCtx = document.getElementById('weeklyTrendsLineChart').getContext('2d');
       if (weeklyLineChartInstance) weeklyLineChartInstance.destroy();
 
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const dynamicLabels = weekDates.map(dStr => {
+        const dt = new Date(dStr + 'T00:00:00');
+        return `${dt.getMonth() + 1}/${dt.getDate()}(${dayNames[dt.getDay()]})`;
+      });
+
       weeklyLineChartInstance = new Chart(lineCtx, {
         type: 'line',
         data: {
-          labels: ['月', '火', '水', '木', '金', '土', '日'],
+          labels: dynamicLabels,
           datasets: [
             {
               label: '睡眠時間 (h)',
@@ -2359,8 +2561,196 @@
       });
     }
 
-    // --- 年間自由時間内訳円グラフ ---
+    // --- 年間集計 ＆ 年間自由時間内訳円グラフ ---
     function renderYearlyCharts() {
+      const allDates = Object.keys(appData).sort();
+      const totalDays = allDates.length || 1;
+
+      let totalSleep = 0;
+      let totalWork = 0;
+      let totalTransport = 0;
+      let totalHobby = 0;
+      let totalNet = 0;
+      let totalMeal = 0;
+      let totalLife = 0;
+      let goodDaysCount = 0;
+
+      // 細かい自由時間タイトルの集計（円グラフ＆内訳用）
+      const freeSubMap = {
+        dev: 0,     // 開発・学習・勉強・創作
+        reading: 0, // 読書・小説・自己投資
+        media: 0,   // 動画・映画・ゲーム・音楽
+        sns: 0      // SNS・ネットサーフィン・散策・リフレッシュ
+      };
+
+      allDates.forEach(dStr => {
+        const m = getDayMetrics(dStr);
+        totalSleep += m.sleepHours;
+        totalWork += m.workHours;
+        totalTransport += m.transportHours;
+        totalHobby += m.hobbyHours;
+        totalNet += m.netHours;
+        totalMeal += m.mealHours;
+        totalLife += m.lifeHours;
+
+        if (m.score !== null && m.score !== undefined && m.score >= 4) {
+          goodDaysCount++;
+        }
+
+        const dayLog = appData[dStr];
+        if (dayLog && dayLog.blocks) {
+          dayLog.blocks.forEach(b => {
+            if (b.category === 'hobby' || b.category === 'net') {
+              const dur = (timeToMinutes(b.end) - timeToMinutes(b.start)) / 60;
+              const t = (b.title || '').toLowerCase();
+              if (t.includes('開発') || t.includes('プログラム') || t.includes('勉強') || t.includes('制作')) {
+                freeSubMap.dev += dur;
+              } else if (t.includes('読書') || t.includes('本') || t.includes('小説') || t.includes('振り返り')) {
+                freeSubMap.reading += dur;
+              } else if (t.includes('動画') || t.includes('映画') || t.includes('アニメ') || t.includes('ゲーム') || t.includes('音楽') || t.includes('youtube')) {
+                freeSubMap.media += dur;
+              } else {
+                freeSubMap.sns += dur;
+              }
+            }
+          });
+        }
+      });
+
+      const totalFree = totalHobby + totalNet;
+      const avgSleepPerDay = (totalSleep / totalDays).toFixed(1);
+      const goodDayRate = ((goodDaysCount / totalDays) * 100).toFixed(1);
+      const freeHoursRate = ((totalFree / (totalDays * 24)) * 100).toFixed(1);
+
+      // 1. 仕事総時間
+      const elWork = document.getElementById('yearlyTotalWork');
+      if (elWork) elWork.textContent = Math.round(totalWork).toLocaleString();
+      const elWorkSub = document.getElementById('yearlyWorkSubtext');
+      if (elWorkSub) elWorkSub.textContent = `年間上限: 1,900h (${totalDays}日集計)`;
+      const elWorkBadge = document.getElementById('yearlyWorkBadge');
+      if (elWorkBadge) {
+        if (totalWork <= 1900) {
+          elWorkBadge.className = 'font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200';
+          elWorkBadge.textContent = '健全範囲内 達成';
+        } else {
+          elWorkBadge.className = 'font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200';
+          elWorkBadge.textContent = `超過 (+${Math.round(totalWork - 1900)}h)`;
+        }
+      }
+
+      // 2. 趣味没頭時間
+      const elHobby = document.getElementById('yearlyTotalHobby');
+      if (elHobby) elHobby.textContent = Math.round(totalHobby).toLocaleString();
+      const elHobbyBadge = document.getElementById('yearlyHobbyBadge');
+      if (elHobbyBadge) {
+        const hobbyRate = ((totalHobby / 400) * 100).toFixed(1);
+        elHobbyBadge.textContent = `${hobbyRate}% 達成`;
+      }
+
+      // 3. 睡眠時間
+      const elSleep = document.getElementById('yearlyTotalSleep');
+      if (elSleep) elSleep.textContent = Math.round(totalSleep).toLocaleString();
+      const elSleepSub = document.getElementById('yearlySleepSubtext');
+      if (elSleepSub) elSleepSub.textContent = `年間平均: ${avgSleepPerDay}時間 / 日`;
+      const elSleepBadge = document.getElementById('yearlySleepBadge');
+      if (elSleepBadge) {
+        const sleepRate = ((totalSleep / 2700) * 100).toFixed(1);
+        elSleepBadge.textContent = `${sleepRate}% 良好`;
+      }
+
+      // 4. 自由時間
+      const elFree = document.getElementById('yearlyTotalFree');
+      if (elFree) elFree.textContent = Math.round(totalFree).toLocaleString();
+      const elFreeSub = document.getElementById('yearlyFreeSubtext');
+      if (elFreeSub) elFreeSub.textContent = `年間総時間の ${freeHoursRate}%`;
+      const elFreeBadge = document.getElementById('yearlyFreeBadge');
+      if (elFreeBadge) elFreeBadge.textContent = '目標確保';
+
+      // --- 進捗バー ＆ 実績比較統計 ---
+      // 睡眠 (目標2700h)
+      const sleepPct = Math.min(100, (totalSleep / 2700) * 100);
+      const elSleepGoalText = document.getElementById('yearlySleepGoalText');
+      if (elSleepGoalText) elSleepGoalText.textContent = `睡眠時間確保（目標: 2,700時間 / 実績: ${Math.round(totalSleep).toLocaleString()}時間）`;
+      const elSleepGoalPct = document.getElementById('yearlySleepGoalPercent');
+      if (elSleepGoalPct) elSleepGoalPct.textContent = `${(totalSleep / 2700 * 100).toFixed(1)}%`;
+      const elSleepBar = document.getElementById('yearlySleepProgressBar');
+      if (elSleepBar) elSleepBar.style.width = `${Math.min(100, sleepPct)}%`;
+
+      // 仕事 (上限1900h)
+      const workDiff = 1900 - Math.round(totalWork);
+      const elWorkGoalText = document.getElementById('yearlyWorkGoalText');
+      if (elWorkGoalText) elWorkGoalText.textContent = `仕事・業務抑制（上限: 1,900時間 / 実績: ${Math.round(totalWork).toLocaleString()}時間）`;
+      const elWorkGoalStat = document.getElementById('yearlyWorkGoalStatus');
+      if (elWorkGoalStat) {
+        elWorkGoalStat.textContent = workDiff >= 0 ? `適正達成 (-${workDiff}h)` : `上限超過 (+${Math.abs(workDiff)}h)`;
+        elWorkGoalStat.className = workDiff >= 0 ? 'font-bold text-emerald-700' : 'font-bold text-rose-700';
+      }
+      const elWorkBar = document.getElementById('yearlyWorkProgressBar');
+      if (elWorkBar) elWorkBar.style.width = `${Math.min(100, (totalWork / 1900) * 100)}%`;
+
+      // 趣味 (目標400h)
+      const hobbyPct = Math.min(100, (totalHobby / 400) * 100);
+      const elHobbyGoalText = document.getElementById('yearlyHobbyGoalText');
+      if (elHobbyGoalText) elHobbyGoalText.textContent = `趣味没頭時間（目標: 400時間 / 実績: ${Math.round(totalHobby).toLocaleString()}時間）`;
+      const elHobbyGoalPct = document.getElementById('yearlyHobbyGoalPercent');
+      if (elHobbyGoalPct) elHobbyGoalPct.textContent = `${(totalHobby / 400 * 100).toFixed(1)}% 達成`;
+      const elHobbyBar = document.getElementById('yearlyHobbyProgressBar');
+      if (elHobbyBar) elHobbyBar.style.width = `${Math.min(100, hobbyPct)}%`;
+
+      // 体感好調日率 (目標65%)
+      const elGoodDayGoalText = document.getElementById('yearlyGoodDayGoalText');
+      if (elGoodDayGoalText) elGoodDayGoalText.textContent = `体感好調日率（スコア4・5の割合 目標: 65% / 実績: ${goodDayRate}%）`;
+      const elGoodDayGoalStat = document.getElementById('yearlyGoodDayGoalStatus');
+      if (elGoodDayGoalStat) {
+        const diff = (goodDayRate - 65).toFixed(1);
+        elGoodDayGoalStat.textContent = diff >= 0 ? `達成 (+${diff}%)` : `未達 (${diff}%)`;
+        elGoodDayGoalStat.className = diff >= 0 ? 'font-bold text-amber-700' : 'font-bold text-rose-700';
+      }
+      const elGoodDayBar = document.getElementById('yearlyGoodDayProgressBar');
+      if (elGoodDayBar) elGoodDayBar.style.width = `${Math.min(100, (goodDayRate / 65) * 100)}%`;
+
+      // 総合達成度
+      const overallRate = ((Math.min(100, sleepPct) + Math.min(100, (totalWork <= 1900 ? 100 : 1900/totalWork*100)) + Math.min(100, hobbyPct) + Math.min(100, goodDayRate/65*100)) / 4).toFixed(1);
+      const elOverall = document.getElementById('yearlyOverallAchievementBadge');
+      if (elOverall) elOverall.textContent = `総合達成度: ${overallRate}%`;
+
+      // フッター集計期間
+      const elPeriodFooter = document.getElementById('yearlyPeriodFooterText');
+      if (elPeriodFooter && allDates.length > 0) {
+        elPeriodFooter.textContent = `集計期間: ${allDates[0]} 〜 ${allDates[allDates.length - 1]} (${totalDays}日間)`;
+      }
+
+      // --- 年間自由時間円グラフ ＆ 内訳カード ---
+      const devHours = Math.round(freeSubMap.dev);
+      const readingHours = Math.round(freeSubMap.reading);
+      const mediaHours = Math.round(freeSubMap.media);
+      const snsHours = Math.max(0, Math.round(totalFree) - (devHours + readingHours + mediaHours));
+
+      const pieTotal = document.getElementById('yearlyFreeTimePieTotal');
+      if (pieTotal) pieTotal.textContent = `総計 ${Math.round(totalFree).toLocaleString()}時間`;
+
+      const breakdownGrid = document.getElementById('yearlyCategoryBreakdownGrid');
+      if (breakdownGrid) {
+        breakdownGrid.innerHTML = `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-pink-50/60 border border-pink-100">
+            <span class="font-medium text-pink-900 truncate">🎨 創作・個人開発</span>
+            <span class="font-bold text-pink-700 ml-1">${devHours}h</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-purple-50/60 border border-purple-100">
+            <span class="font-medium text-purple-900 truncate">📚 読書・勉強</span>
+            <span class="font-bold text-purple-700 ml-1">${readingHours}h</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-indigo-50/60 border border-indigo-100">
+            <span class="font-medium text-indigo-900 truncate">🎬 映画・ゲーム・音楽</span>
+            <span class="font-bold text-indigo-700 ml-1">${mediaHours}h</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-amber-50/60 border border-amber-100">
+            <span class="font-medium text-amber-900 truncate">📱 ネット・SNS・散策</span>
+            <span class="font-bold text-amber-700 ml-1">${snsHours}h</span>
+          </div>
+        `;
+      }
+
       const ctx = document.getElementById('yearlyFreeTimePieChart');
       if (!ctx) return;
       if (yearlyPieChartInstance) yearlyPieChartInstance.destroy();
@@ -2368,9 +2758,9 @@
       yearlyPieChartInstance = new Chart(ctx.getContext('2d'), {
         type: 'doughnut',
         data: {
-          labels: ['創作・開発', '読書・勉強', '映画・アニメ', 'ネット・SNS'],
+          labels: ['創作・個人開発', '読書・勉強', '映画・ゲーム・音楽', 'ネット・SNS・散策'],
           datasets: [{
-            data: [420, 260, 210, 290],
+            data: [devHours, readingHours, mediaHours, snsHours],
             backgroundColor: ['#F472B6', '#C084FC', '#818CF8', '#FBBF24'],
             borderWidth: 2,
             borderColor: '#FFFFFF'
@@ -2379,7 +2769,18 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw || 0;
+                  const pct = totalFree > 0 ? ((val / totalFree) * 100).toFixed(1) : 0;
+                  return ` ${ctx.label}: ${val}時間 (${pct}%)`;
+                }
+              }
+            }
+          },
           cutout: '65%'
         }
       });
@@ -2634,16 +3035,39 @@
       return `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
     }
 
+    function toLocalDateStr(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     function getWeekDates(centerDateStr) {
-      return [
-        '2026-11-09',
-        '2026-11-10',
-        '2026-11-11',
-        '2026-11-12',
-        '2026-11-13',
-        '2026-11-14',
-        '2026-11-15'
-      ];
+      const allDates = Object.keys(appData).sort();
+      const latestDate = allDates.length > 0 ? allDates[allDates.length - 1] : '2026-11-15';
+      const target = centerDateStr || selectedDate || latestDate;
+
+      // デフォルト（今日/最新日が対象の場合）：今日を最新（最終日）にして過去1週間表示 (T-6 〜 T)
+      if (!target || target === latestDate) {
+        const dates = [];
+        const base = new Date(latestDate + 'T00:00:00');
+        for (let i = 6; i >= 0; i--) {
+          const cur = new Date(base);
+          cur.setDate(base.getDate() - i);
+          dates.push(toLocalDateStr(cur));
+        }
+        return dates;
+      }
+
+      // 日次ページ等で特定の日を選択した場合：その日を中心に前後1週間表示 (D-3 〜 D+3)
+      const dates = [];
+      const base = new Date(target + 'T00:00:00');
+      for (let i = -3; i <= 3; i++) {
+        const cur = new Date(base);
+        cur.setDate(base.getDate() + i);
+        dates.push(toLocalDateStr(cur));
+      }
+      return dates;
     }
   </script>
 </body>

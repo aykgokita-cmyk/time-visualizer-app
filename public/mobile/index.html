@@ -16,6 +16,8 @@
   <!-- Favicon & Apple Touch Icon -->
   <link rel="icon" type="image/jpeg" href="/icons/icon.jpg">
   <link rel="apple-touch-icon" href="/icons/icon.jpg">
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
 
   <style>
     /* CSS Reset & Variables */
@@ -1646,7 +1648,13 @@
         </svg>
         Time Visualizer
       </h1>
-      <span class="brand-badge">PWA Ready</span>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="brand-badge">PWA Ready</span>
+        <a href="/auth/logout?returnTo=/mobile" id="mobile-logout-btn" title="ログアウト" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.68rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 7px; border-radius: 6px; text-decoration: none;">
+          <span id="mobile-user-name" style="max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">田中 健一</span>
+          <span style="color: #94a3b8; font-size: 0.6rem;">退出</span>
+        </a>
+      </div>
     </div>
 
     <!-- Date selector & Nav for timeline (dynamically updated) -->
@@ -1909,6 +1917,10 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           JSONインポート
         </button>
+        <button class="backup-btn" id="btn-sync-sqlite" style="background: #2563eb; color: #ffffff; border: none; grid-column: 1 / -1;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          SQLiteからテストデータを同期
+        </button>
         <input type="file" id="json-file-input" accept=".json" style="display: none;">
       </div>
     </div>
@@ -2151,9 +2163,9 @@ function getDayBlocks(dateKey) {
 // Helper: Set blocks array for a given date key
 function setDayBlocks(dateKey, blocks) {
   if (!state.appData[dateKey]) {
-    state.appData[dateKey] = { score: 3, note: '', blocks: [] };
+    state.appData[dateKey] = { score: null, satisfaction: null, note: '', blocks: [] };
   } else if (Array.isArray(state.appData[dateKey])) {
-    state.appData[dateKey] = { score: 3, note: '', blocks: state.appData[dateKey] };
+    state.appData[dateKey] = { score: null, satisfaction: null, note: '', blocks: state.appData[dateKey] };
   }
   state.appData[dateKey].blocks = blocks;
 }
@@ -2255,13 +2267,15 @@ function normalizeToAppData(raw) {
     if (!dayVal) continue;
     if (dayVal.blocks && Array.isArray(dayVal.blocks)) {
       result[dateKey] = {
-        score: dayVal.score || 3,
+        score: dayVal.score !== undefined && dayVal.score !== null ? dayVal.score : null,
+        satisfaction: dayVal.satisfaction !== undefined && dayVal.satisfaction !== null ? dayVal.satisfaction : null,
         note: dayVal.note || '',
         blocks: dayVal.blocks.map(normalizeBlock)
       };
     } else if (Array.isArray(dayVal)) {
       result[dateKey] = {
-        score: 3,
+        score: null,
+        satisfaction: null,
         note: '',
         blocks: dayVal.map(normalizeBlock)
       };
@@ -2275,10 +2289,111 @@ const STORAGE_KEY = 'time_visualizer_pc_dashboard_v1';
 const LEGACY_STORAGE_KEY = 'time_visualizer_data_v1';
 const STORAGE_TARGET_KEY = 'time_visualizer_target_sleep_v1';
 
-function saveState() {
+let mobileSocket = null;
+function initMobileSocket() {
+  if (typeof io === 'undefined') return;
+  try {
+    mobileSocket = io();
+    mobileSocket.on('connect', () => {
+      console.log('[Mobile Socket] サーバー接続成功 (ID:', mobileSocket.id, ')');
+      mobileSocket.emit('join_user', 1);
+    });
+
+    mobileSocket.on('data_updated', async (data) => {
+      console.log('[Mobile Socket] リアルタイム更新を受信:', data);
+      // PC側からの更新を即座に再取得して反映
+      await fetchAndSyncSQLiteData(false);
+      if (typeof showToast === 'function') {
+        showToast('PCダッシュボードと同期しました', '⚡');
+      }
+    });
+  } catch (e) {
+    console.warn('[Mobile Socket] 初期化スキップ:', e);
+  }
+}
+
+// SQLiteテストデータの自動取得・同期
+async function fetchAndSyncSQLiteData(showNotification = true) {
+  try {
+    const res = await fetch('/api/dashboard/all-data');
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (data.success && data.logs && Object.keys(data.logs).length > 0) {
+      // 既存の normalizeToAppData を通して state.appData に格納
+      const normalized = normalizeToAppData(data.logs);
+      state.appData = normalized;
+      saveState(false); // DBへの二重送信ループを防ぐため false
+
+      // 最新日付または本日（2026-11-25）を設定
+      const dateKeys = Object.keys(state.appData).sort();
+      if (dateKeys.length > 0) {
+        const latestKey = dateKeys[dateKeys.length - 1];
+        const [y, m, d] = latestKey.split('-').map(Number);
+        state.currentDate = new Date(y, m - 1, d);
+      }
+
+      renderTimeline();
+      renderSleepAnalysis();
+      renderReports();
+      if (typeof updateBackupCountBadge === 'function') {
+        updateBackupCountBadge();
+      }
+
+      if (showNotification && typeof showToast === 'function') {
+        const days = Object.keys(state.appData).length;
+        showToast(`SQLiteから${days}日分のデータを同期しました`, '⚡');
+      }
+      console.log(`[Mobile] SQLiteテストデータを反映しました (${Object.keys(state.appData).length}日分)`);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Mobile] SQLiteデータ取得エラー:', err);
+  }
+  return false;
+}
+
+function saveState(syncToBackend = true) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.appData));
     localStorage.setItem(STORAGE_TARGET_KEY, JSON.stringify(state.targetSleepHours));
+
+    // バックエンド SQLite への非同期保存
+    if (syncToBackend) {
+      const currentKey = formatDateKey(state.currentDate);
+      const dayData = state.appData[currentKey] || { score: null, satisfaction: null, note: '', blocks: [] };
+      const blocks = getDayBlocks(currentKey);
+
+      // 1. タイムブロックのバッチ保存
+      fetch('/api/time-blocks/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: currentKey, blocks })
+      }).catch(e => console.warn('[Mobile] ブロック保存失敗:', e));
+
+      // 2. 日次ログ（スコア・メモ）の保存
+      fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: currentKey,
+          score: dayData.score !== undefined && dayData.score !== null ? dayData.score : null,
+          satisfaction: dayData.satisfaction !== undefined && dayData.satisfaction !== null ? dayData.satisfaction : null,
+          note: dayData.note || dayData.diary_note || '',
+          sleep_hours: dayData.sleep_hours || 7.0,
+          free_hours: dayData.free_hours || 2.5
+        })
+      }).catch(e => console.warn('[Mobile] ログ保存失敗:', e));
+    }
+
+    // Socket.io で接続中のPCダッシュボードへリアルタイム同期通知
+    if (mobileSocket && mobileSocket.connected) {
+      mobileSocket.emit('notify_update', {
+        type: 'time_blocks',
+        userId: 1,
+        date: formatDateKey(state.currentDate),
+        timestamp: Date.now()
+      });
+    }
   } catch (e) {
     console.error('Storage save error:', e);
   }
@@ -3646,6 +3761,18 @@ function initEventListeners() {
   });
   document.getElementById('json-file-input').addEventListener('change', handleJSONFileSelect);
 
+  // SQLite Re-sync Button
+  const syncBtn = document.getElementById('btn-sync-sqlite');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      syncBtn.disabled = true;
+      syncBtn.textContent = '同期中...';
+      const ok = await fetchAndSyncSQLiteData(true);
+      syncBtn.disabled = false;
+      syncBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> SQLiteからテストデータを同期';
+    });
+  }
+
   // Import Modal Choice Buttons
   document.getElementById('import-modal-close-btn').addEventListener('click', closeImportModal);
   document.getElementById('btn-import-cancel').addEventListener('click', closeImportModal);
@@ -3811,7 +3938,23 @@ function initServiceWorker() {
 }
 
 // App Initialization
-window.addEventListener('DOMContentLoaded', () => {
+async function fetchMobileUserInfo() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) {
+      const user = await res.json();
+      if (user && user.authenticated) {
+        const nameEl = document.getElementById('mobile-user-name');
+        if (nameEl) nameEl.textContent = user.display_name || user.email || 'ユーザー';
+      }
+    }
+  } catch (e) {
+    console.warn('ユーザー情報取得スキップ:', e);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  fetchMobileUserInfo();
   const hasExistingData = loadState();
   if (!hasExistingData || Object.keys(state.events).length === 0) {
     generateSampleData();
@@ -3822,8 +3965,12 @@ window.addEventListener('DOMContentLoaded', () => {
   initTimelineInteractions();
   initEventListeners();
   initServiceWorker();
+  initMobileSocket();
 
   renderTimeline();
+
+  // SQLiteから1年分（366日）のテストデータを自動取得・同期
+  await fetchAndSyncSQLiteData(true);
 });
 </script>
 

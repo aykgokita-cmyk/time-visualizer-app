@@ -146,11 +146,112 @@ async function seed() {
     const baseDate = new Date(); // 基準日 (本日)
 
     // ==============================================================
-    // 2. メインユーザー1 (田中 健太): 過去365日分 (1年分のログ＆タイムブロック)
+    // 2. メインユーザー1 (田中 健太): 過去365日分 (全7大カテゴリ網羅)
     // ==============================================================
-    console.log('[Seed] ユーザー1 (田中 健太): 過去365日分のデータを投入中...');
+    console.log('[Seed] ユーザー1 (田中 健太): 過去365日分のデータ（7大カテゴリ完備）を生成中...');
     let u1LogCount = 0;
     let u1BlockCount = 0;
+
+    // 多彩な平日パターン定義 (7大カテゴリ: sleep, life, meal, work, hobby, net, transport)
+    const WEEKDAY_PATTERNS = [
+      // パターン0: 定番バランス型（自炊・個人開発・読書）
+      [
+        { start: '00:00', end: '07:00', title: '睡眠 (定刻快眠)', cat: 'sleep' },
+        { start: '07:00', end: '07:30', title: '身支度・朝の準備', cat: 'life' },
+        { start: '07:30', end: '08:00', title: '朝食 (トースト・目玉焼き)', cat: 'meal' },
+        { start: '08:00', end: '09:00', title: '通勤・移動', cat: 'transport' },
+        { start: '09:00', end: '12:00', title: 'コア業務 (開発・集中)', cat: 'work' },
+        { start: '12:00', end: '13:00', title: '昼食・カフェ休憩', cat: 'meal' },
+        { start: '13:00', end: '18:00', title: '業務 (MTG・コードレビュー)', cat: 'work' },
+        { start: '18:00', end: '19:00', title: '帰宅移動', cat: 'transport' },
+        { start: '19:00', end: '20:00', title: '夕食 (自炊健康ご飯)', cat: 'meal' },
+        { start: '20:00', end: '20:45', title: '入浴・家事片付け', cat: 'life' },
+        { start: '20:45', end: '22:15', title: '個人開発・趣味プログラミング', cat: 'hobby' },
+        { start: '22:15', end: '23:30', title: 'YouTube視聴・SNS情報収集', cat: 'net' },
+        { start: '23:30', end: '24:00', title: 'ストレッチ・就寝準備', cat: 'life' }
+      ],
+      // パターン1: 朝活＆運動型（ランニング・軽快ランチ）
+      [
+        { start: '00:00', end: '06:45', title: '睡眠', cat: 'sleep' },
+        { start: '06:45', end: '07:15', title: '身支度', cat: 'life' },
+        { start: '07:15', end: '07:45', title: '朝のジョギング・散歩', cat: 'hobby' },
+        { start: '07:45', end: '08:15', title: '朝食 (プロテイン・フルーツ)', cat: 'meal' },
+        { start: '08:15', end: '09:00', title: '通勤', cat: 'transport' },
+        { start: '09:00', end: '12:30', title: '業務 (設計・実装)', cat: 'work' },
+        { start: '12:30', end: '13:30', title: '昼食 (定食ランチ)', cat: 'meal' },
+        { start: '13:30', end: '18:30', title: '業務 (タスク推進)', cat: 'work' },
+        { start: '18:30', end: '19:15', title: '帰宅', cat: 'transport' },
+        { start: '19:15', end: '20:15', title: '夕食', cat: 'meal' },
+        { start: '20:15', end: '21:00', title: '入浴・洗濯', cat: 'life' },
+        { start: '21:00', end: '22:30', title: '技術書読書・勉強', cat: 'hobby' },
+        { start: '22:30', end: '23:30', title: 'ネットサーフィン・動画', cat: 'net' },
+        { start: '23:30', end: '24:00', title: '就寝前リラックス', cat: 'life' }
+      ],
+      // パターン2: 集中残業＆外食型
+      [
+        { start: '00:00', end: '06:30', title: '睡眠', cat: 'sleep' },
+        { start: '06:30', end: '07:15', title: '身支度', cat: 'life' },
+        { start: '07:15', end: '07:45', title: '朝食', cat: 'meal' },
+        { start: '07:45', end: '08:45', title: '通勤', cat: 'transport' },
+        { start: '08:45', end: '12:00', title: '業務 (緊急対応・集中)', cat: 'work' },
+        { start: '12:00', end: '12:45', title: '昼食 (軽食サクッと)', cat: 'meal' },
+        { start: '12:45', end: '19:30', title: '業務 (リリース対応・残業)', cat: 'work' },
+        { start: '19:30', end: '20:30', title: '移動・買い物', cat: 'transport' },
+        { start: '20:30', end: '21:30', title: '夕食 (外食・ラーメン)', cat: 'meal' },
+        { start: '21:30', end: '22:15', title: '入浴・部屋の片付け', cat: 'life' },
+        { start: '22:15', end: '23:15', title: '動画鑑賞で息抜き', cat: 'net' },
+        { start: '23:15', end: '24:00', title: '好きな小説読書', cat: 'hobby' }
+      ],
+      // パターン3: 定時退社＆外食ディナー型（友人・同僚とディナー）
+      [
+        { start: '00:00', end: '07:15', title: '睡眠 (しっかり快眠)', cat: 'sleep' },
+        { start: '07:15', end: '07:45', title: '身支度', cat: 'life' },
+        { start: '07:45', end: '08:15', title: '朝食', cat: 'meal' },
+        { start: '08:15', end: '09:00', title: '通勤', cat: 'transport' },
+        { start: '09:00', end: '12:00', title: '業務 (午前集中)', cat: 'work' },
+        { start: '12:00', end: '13:00', title: '昼食 (カフェランチ)', cat: 'meal' },
+        { start: '13:00', end: '17:30', title: '業務 (定時完了)', cat: 'work' },
+        { start: '17:30', end: '18:30', title: '街へ移動', cat: 'transport' },
+        { start: '18:30', end: '21:00', title: '夕食 (友人とディナー・外食)', cat: 'meal' },
+        { start: '21:00', end: '21:45', title: '帰宅移動', cat: 'transport' },
+        { start: '21:45', end: '22:30', title: '入浴・スキンケア', cat: 'life' },
+        { start: '22:30', end: '23:30', title: 'ゲーム・趣味時間', cat: 'hobby' },
+        { start: '23:30', end: '24:00', title: 'SNSチェック・就寝準備', cat: 'net' }
+      ]
+    ];
+
+    // 多彩な休日パターン定義
+    const WEEKEND_PATTERNS = [
+      // 休日0: 外出アクティブ型（ドライブ・観光・美味しい外食）
+      [
+        { start: '00:00', end: '08:00', title: '睡眠 (休日たっぷり)', cat: 'sleep' },
+        { start: '08:00', end: '09:00', title: '身支度・部屋の片付け', cat: 'life' },
+        { start: '09:00', end: '10:00', title: '朝食 (パンケーキ・コーヒー)', cat: 'meal' },
+        { start: '10:00', end: '11:30', title: 'ドライブ・外出移動', cat: 'transport' },
+        { start: '11:30', end: '13:00', title: '散策・写真撮影', cat: 'hobby' },
+        { start: '13:00', end: '14:30', title: '昼食 (人気のカフェ・名物料理)', cat: 'meal' },
+        { start: '14:30', end: '17:00', title: 'ショッピング・街歩き', cat: 'hobby' },
+        { start: '17:00', end: '18:30', title: '帰路移動', cat: 'transport' },
+        { start: '18:30', end: '20:00', title: '夕食 (美味しいお肉ディナー)', cat: 'meal' },
+        { start: '20:00', end: '21:00', title: '入浴・洗濯・荷解き', cat: 'life' },
+        { start: '21:00', end: '22:30', title: '趣味の音楽鑑賞・読書', cat: 'hobby' },
+        { start: '22:30', end: '24:00', title: '動画配信サービス・映画鑑賞', cat: 'net' }
+      ],
+      // 休日1: まったりインドア＆クリエイティブ型（自炊・個人開発・映画）
+      [
+        { start: '00:00', end: '08:30', title: '睡眠 (休日の快眠)', cat: 'sleep' },
+        { start: '08:30', end: '09:30', title: '朝食 (ハンドドリップコーヒーと軽食)', cat: 'meal' },
+        { start: '09:30', end: '11:00', title: '大掃除・洗濯・買い物', cat: 'life' },
+        { start: '11:00', end: '13:30', title: '個人アプリ開発・創作', cat: 'hobby' },
+        { start: '13:30', end: '14:30', title: '昼食 (パスタ手作り)', cat: 'meal' },
+        { start: '14:30', end: '17:00', title: '映画鑑賞・読書タイム', cat: 'hobby' },
+        { start: '17:00', end: '18:00', title: '近所を散歩・リフレッシュ', cat: 'hobby' },
+        { start: '18:00', end: '19:30', title: '夕食・晩酌', cat: 'meal' },
+        { start: '19:30', end: '20:30', title: '長湯・半身浴', cat: 'life' },
+        { start: '20:30', end: '22:30', title: 'YouTube視聴・技術トレンド調査', cat: 'net' },
+        { start: '22:30', end: '24:00', title: '日記・週の振り返り', cat: 'hobby' }
+      ]
+    ];
 
     for (let i = 365; i >= 0; i--) {
       const targetDate = addDays(baseDate, -i);
@@ -158,10 +259,10 @@ async function seed() {
       const dayOfWeek = targetDate.getDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-      let sleepHours = isWeekend ? randomBetween(7.0, 9.0, 1) : randomBetween(5.5, 7.8, 1);
+      let sleepHours = isWeekend ? randomBetween(7.2, 8.8, 1) : randomBetween(6.0, 7.5, 1);
       let satisfaction = randomBetween(2, 5);
       let score = satisfaction;
-      let freeHours = isWeekend ? randomBetween(4.0, 7.5, 1) : randomBetween(2.0, 4.5, 1);
+      let freeHours = isWeekend ? randomBetween(4.5, 7.5, 1) : randomBetween(2.0, 4.0, 1);
 
       let memo = '';
       if (satisfaction >= 5) {
@@ -172,12 +273,12 @@ async function seed() {
         memo = MEMO_TEMPLATES.normalSatisfaction[i % MEMO_TEMPLATES.normalSatisfaction.length];
       }
 
-      // 節目や記念日のメモ
+      // 記念日・節目メモ
       if (i === 365) {
         memo = '【1年前の構想メモ】時間可視化アプリのアイデアを思いついた日。ここから全てが始まった。';
         satisfaction = 5;
       } else if (i === 180) {
-        memo = '【半年記念】習慣化の継続日数が180日を突破。睡眠と作業のバランスが明らかに改善してきた。';
+        memo = '【半年記念】習慣化の継続日数が180日を突破。食事と睡眠、趣味のバランスが向上した。';
         satisfaction = 5;
       } else if (i === 0) {
         memo = '【本日】EC2+Nginx+Socket.ioのマルチユーザー環境検証スタート！';
@@ -191,24 +292,10 @@ async function seed() {
       );
       u1LogCount++;
 
-      // タイムブロック (平日/休日パターン)
+      // パターンの選定
       const blocks = isWeekend
-        ? [
-            { start: '00:00', end: '08:30', title: '睡眠 (休日快眠)', cat: 'sleep' },
-            { start: '09:00', end: '10:30', title: '朝食・散歩', cat: 'routine' },
-            { start: '11:00', end: '13:00', title: '個人開発・学習', cat: 'side_project' },
-            { start: '14:00', end: '18:00', title: '趣味・外出・リラックス', cat: 'leisure' },
-            { start: '19:00', end: '20:30', title: '夕食・入浴', cat: 'routine' },
-            { start: '21:00', end: '23:30', title: '読書・振り返り', cat: 'leisure' }
-          ]
-        : [
-            { start: '00:00', end: '07:00', title: '睡眠', cat: 'sleep' },
-            { start: '07:30', end: '08:30', title: '朝の準備・通勤', cat: 'routine' },
-            { start: '09:00', end: '12:00', title: 'コア業務 (開発・集中)', cat: 'work' },
-            { start: '13:00', end: '18:00', title: '業務 (MTG・設計)', cat: 'work' },
-            { start: '19:00', end: '20:00', title: '夕食・休憩', cat: 'routine' },
-            { start: '20:30', end: '23:00', title: '自己研鑽・副業', cat: 'side_project' }
-          ];
+        ? WEEKEND_PATTERNS[i % WEEKEND_PATTERNS.length]
+        : WEEKDAY_PATTERNS[i % WEEKDAY_PATTERNS.length];
 
       for (const b of blocks) {
         await runAsync(
@@ -221,21 +308,23 @@ async function seed() {
     }
 
     // ==============================================================
-    // 3. メインユーザー2 (佐藤 美咲): 直近90日分 (3ヶ月)
+    // 3. メインユーザー2 (佐藤 美咲): 直近90日分 (7大カテゴリ完備)
     // ==============================================================
-    console.log('[Seed] ユーザー2 (佐藤 美咲): 直近90日分のデータを投入中...');
+    console.log('[Seed] ユーザー2 (佐藤 美咲): 直近90日分のデータ（7大カテゴリ完備）を生成中...');
     let u2LogCount = 0;
     let u2BlockCount = 0;
 
     for (let i = 90; i >= 0; i--) {
       const targetDate = addDays(baseDate, -i);
       const dateStr = formatDate(targetDate);
+      const dayOfWeek = targetDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       const sleepHours = randomBetween(6.5, 8.2, 1);
       const satisfaction = randomBetween(3, 5);
       const score = satisfaction;
-      const freeHours = randomBetween(3.0, 6.0, 1);
-      const memo = `【佐藤ログ】UIデザイン作業とユーザー体験レビュー。充実度: ${satisfaction}`;
+      const freeHours = randomBetween(3.0, 5.5, 1);
+      const memo = `【佐藤ログ】UIデザイン作業とカフェでのアイデア出し。充実度: ${satisfaction}`;
 
       await runAsync(
         `INSERT INTO daily_logs (user_id, log_date, sleep_hours, satisfaction, memo, score, free_hours)
@@ -244,12 +333,34 @@ async function seed() {
       );
       u2LogCount++;
 
-      const blocks = [
-        { start: '01:00', end: '08:00', title: '睡眠 (夜型)', cat: 'sleep' },
-        { start: '09:30', end: '12:30', title: 'UIデザイン作業', cat: 'work' },
-        { start: '13:30', end: '18:30', title: 'クライアントMTG・修正', cat: 'work' },
-        { start: '20:00', end: '22:00', title: 'イラスト制作・リフレッシュ', cat: 'leisure' }
-      ];
+      const blocks = isWeekend
+        ? [
+            { start: '00:30', end: '08:30', title: '睡眠 (夜型快眠)', cat: 'sleep' },
+            { start: '08:30', end: '09:30', title: '朝食 (ブランチ・フルーツ)', cat: 'meal' },
+            { start: '09:30', end: '11:00', title: '掃除・洗濯・身支度', cat: 'life' },
+            { start: '11:00', end: '13:00', title: 'カフェへ移動・散歩', cat: 'transport' },
+            { start: '13:00', end: '14:30', title: 'ランチ (カフェごはん)', cat: 'meal' },
+            { start: '14:30', end: '18:00', title: 'イラスト制作・個人制作', cat: 'hobby' },
+            { start: '18:00', end: '19:30', title: '夕食 (友人とディナー)', cat: 'meal' },
+            { start: '19:30', end: '20:30', title: '帰宅・買い物', cat: 'transport' },
+            { start: '20:30', end: '21:30', title: '入浴・リラックス', cat: 'life' },
+            { start: '21:30', end: '23:30', title: 'デザインSNS・ピンタレスト巡回', cat: 'net' },
+            { start: '23:30', end: '24:00', title: '読書・就寝準備', cat: 'hobby' }
+          ]
+        : [
+            { start: '01:00', end: '08:00', title: '睡眠', cat: 'sleep' },
+            { start: '08:00', end: '08:30', title: '身支度', cat: 'life' },
+            { start: '08:30', end: '09:00', title: '朝食 (コーヒーとヨーグルト)', cat: 'meal' },
+            { start: '09:00', end: '09:30', title: '通勤・移動', cat: 'transport' },
+            { start: '09:30', end: '12:30', title: 'UIデザイン制作業務', cat: 'work' },
+            { start: '12:30', end: '13:30', title: '昼食・ランチ休憩', cat: 'meal' },
+            { start: '13:30', end: '18:30', title: 'クライアントMTG・修正', cat: 'work' },
+            { start: '18:30', end: '19:30', title: '帰宅', cat: 'transport' },
+            { start: '19:30', end: '20:30', title: '夕食', cat: 'meal' },
+            { start: '20:30', end: '21:15', title: '入浴・家事', cat: 'life' },
+            { start: '21:15', end: '22:45', title: 'イラスト趣味・デッサン', cat: 'hobby' },
+            { start: '22:45', end: '24:00', title: '動画視聴・SNSチェック', cat: 'net' }
+          ];
 
       for (const b of blocks) {
         await runAsync(
