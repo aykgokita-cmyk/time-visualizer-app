@@ -1,0 +1,49 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor & IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.tmp/
+tmp/
+
+# Dependency directories
+node_modules/
+
+# Production build outputs
+dist/
+build/
+out/
+
+# Environment and Secrets (絶対にコミットしない)
+.env
+.env.local
+.env.*.local
+client_secret*.json
+
+# SQLite 実行時稼働データ（アプリ実行中に更新されるためGit管理から除外）
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+life._log.sqlite
+life_log.sqlite
+
+# ただし、EC2デプロイ初期データ用のシードファイルはGitで共有する
+!life._log.sqlite.seed

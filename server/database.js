@@ -1,8 +1,20 @@
+const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // 環境変数 DB_PATH を優先、未指定時はカレントディレクトリの ./life._log.sqlite
 const DB_PATH = process.env.DB_PATH || path.resolve(process.cwd(), 'life._log.sqlite');
+const SEED_PATH = process.env.DB_SEED_PATH || path.resolve(process.cwd(), 'life._log.sqlite.seed');
+
+// 初回起動時や新規デプロイ時（EC2等）: DB_PATH が未作成で seed ファイルが存在する場合、自動復元
+if (!fs.existsSync(DB_PATH) && fs.existsSync(SEED_PATH)) {
+  try {
+    console.log(`[DB Info] 初期シードファイルからデータベースを生成します: ${SEED_PATH} -> ${DB_PATH}`);
+    fs.copyFileSync(SEED_PATH, DB_PATH);
+  } catch (copyErr) {
+    console.error(`[DB Error] シードファイルのコピーに失敗しました:`, copyErr);
+  }
+}
 
 let dbInstance = null;
 

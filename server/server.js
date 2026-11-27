@@ -288,6 +288,7 @@ app.get('/api/me', (req, res) => {
 // ==============================================================
 // 1. 公開アイコン・アセット (/icons/*) - 認証不要
 app.use('/icons', express.static(path.join(__dirname, '../public/icons')));
+app.use('/public', express.static(path.join(__dirname, '../public')));
 
 // 2. PCダッシュボード (/dashboard/*) - 認証保護
 app.use('/dashboard', requireAuthPage, express.static(path.join(__dirname, '../public/dashboard'), { index: 'pc_dashboard.html' }));

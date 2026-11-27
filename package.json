@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server/server.js",
-    "seed": "node server/seed.js"
+    "seed": "node server/seed.js",
+    "db:restore": "node -e \"const fs = require('fs'); fs.copyFileSync('life._log.sqlite.seed', 'life._log.sqlite'); console.log('[DB] life._log.sqlite.seed restored to life._log.sqlite');\"",
+    "db:backup-seed": "node -e \"const sqlite3 = require('sqlite3'); const db = new sqlite3.Database('life._log.sqlite'); db.run('PRAGMA wal_checkpoint(TRUNCATE);', () => { db.close(); require('fs').copyFileSync('life._log.sqlite', 'life._log.sqlite.seed'); console.log('[DB] life._log.sqlite checkpointed and saved to life._log.sqlite.seed'); });\""
   },
   "dependencies": {
     "connect-sqlite3": "^0.9.18",
