@@ -85,7 +85,7 @@ async function seed() {
     // ==============================================================
     const users = [
       {
-        google_sub: 'google-sub-100000000000000000001',
+        google_sub: null,
         email: 'kenta.tanaka@example.com',
         display_name: '田中 健太 (メイン検証A)',
         dashboard_mode: 'mode_1'

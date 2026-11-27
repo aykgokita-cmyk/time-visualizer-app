@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "seed": "node server/seed.js",
-    "db:restore": "node -e \"const fs = require('fs'); fs.copyFileSync('life._log.sqlite.seed', 'life._log.sqlite'); console.log('[DB] life._log.sqlite.seed restored to life._log.sqlite');\"",
+    "db:restore": "node -e \"const fs = require('fs'); ['life._log.sqlite', 'life._log.sqlite-wal', 'life._log.sqlite-shm', 'server/life._log.sqlite', 'server/life._log.sqlite-wal', 'server/life._log.sqlite-shm'].forEach(f => { if (fs.existsSync(f)) try { fs.unlinkSync(f); } catch (e) {} }); fs.copyFileSync('life._log.sqlite.seed', 'life._log.sqlite'); console.log('[DB] Restored life._log.sqlite.seed and cleaned all WAL files successfully');\"",
     "db:backup-seed": "node -e \"const sqlite3 = require('sqlite3'); const db = new sqlite3.Database('life._log.sqlite'); db.run('PRAGMA wal_checkpoint(TRUNCATE);', () => { db.close(); require('fs').copyFileSync('life._log.sqlite', 'life._log.sqlite.seed'); console.log('[DB] life._log.sqlite checkpointed and saved to life._log.sqlite.seed'); });\""
   },
   "dependencies": {
