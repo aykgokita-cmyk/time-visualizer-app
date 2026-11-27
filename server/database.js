@@ -2,14 +2,31 @@ const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// 環境変数 DB_PATH を優先、未指定時はカレントディレクトリの ./life._log.sqlite
-const DB_PATH = process.env.DB_PATH || path.resolve(process.cwd(), 'life._log.sqlite');
-const SEED_PATH = process.env.DB_SEED_PATH || path.resolve(process.cwd(), 'life._log.sqlite.seed');
+// プロジェクトルートディレクトリ（server の親ディレクトリ）
+const rootDir = path.resolve(__dirname, '..');
 
-// 初回起動時や新規デプロイ時（EC2等）: DB_PATH が未作成で seed ファイルが存在する場合、自動復元
-if (!fs.existsSync(DB_PATH) && fs.existsSync(SEED_PATH)) {
+// DB_PATH はプロジェクトルートの life._log.sqlite を確実に参照
+const DB_PATH = process.env.DB_PATH || path.resolve(rootDir, 'life._log.sqlite');
+
+// SEED_PATH もプロジェクトルートの life._log.sqlite.seed を優先探索
+const candidateSeedPaths = [
+  process.env.DB_SEED_PATH,
+  path.resolve(rootDir, 'life._log.sqlite.seed'),
+  path.resolve(process.cwd(), 'life._log.sqlite.seed'),
+  path.resolve(__dirname, 'life._log.sqlite.seed')
+].filter(Boolean);
+
+const SEED_PATH = candidateSeedPaths.find(p => fs.existsSync(p)) || path.resolve(rootDir, 'life._log.sqlite.seed');
+
+// 自動復元条件:
+// 1. DB_PATH が存在しない場合
+// 2. または DB_PATH が存在してもサイズが 100KB 未満の場合（367日分のシードデータが入っていない空/初期化直後DB）
+const isDbMissing = !fs.existsSync(DB_PATH);
+const isDbIncomplete = fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size < 100000;
+
+if ((isDbMissing || isDbIncomplete) && fs.existsSync(SEED_PATH)) {
   try {
-    console.log(`[DB Info] 初期シードファイルからデータベースを生成します: ${SEED_PATH} -> ${DB_PATH}`);
+    console.log(`[DB Info] テストデータシードファイル (${SEED_PATH}) からデータベースを展開・復元します -> ${DB_PATH}`);
     fs.copyFileSync(SEED_PATH, DB_PATH);
   } catch (copyErr) {
     console.error(`[DB Error] シードファイルのコピーに失敗しました:`, copyErr);

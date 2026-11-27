@@ -25,7 +25,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // データベース初期化 (テーブル、インデックス等)
-initDatabase();
+initDatabase().then(() => {
+  db.get('SELECT count(*) as count FROM daily_logs WHERE user_id = 1', (err, row) => {
+    const count = row ? row.count : 0;
+    console.log(`[DB Info] 田中 (User 1) の日次ログ総件数: ${count} 件`);
+  });
+}).catch(err => {
+  console.error('[DB Error] データベース初期化エラー:', err);
+});
 
 // ==============================================================
 // セッション & Cookie 設定 (SQLite 永続化ストア)

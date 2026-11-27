@@ -1573,7 +1573,7 @@
       const text = document.getElementById('apiStatusText');
 
       try {
-        const res = await fetch('/api/dashboard/all-data');
+        const res = await fetch('/api/dashboard/all-data?_t=' + Date.now());
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.logs && Object.keys(data.logs).length > 0) {
@@ -1590,7 +1590,7 @@
             if (badge && text) {
               badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5';
               const userName = data.user && data.user.display_name ? data.user.display_name.split(' ')[0] : '田中';
-              text.textContent = `API同期済: ${userName} (${data.total_days}日分)`;
+              text.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> API同期済: ${userName} (${data.total_days}日分)`;
             }
             console.log(`[Dashboard] SQLiteテストデータを読み込みました (${data.total_days}日分)`);
             return;
