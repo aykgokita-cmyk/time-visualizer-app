@@ -3942,10 +3942,10 @@ async function fetchMobileUserInfo() {
   try {
     const res = await fetch('/api/me');
     if (res.ok) {
-      const user = await res.json();
-      if (user && user.authenticated) {
+      const data = await res.json();
+      if (data && data.authenticated && data.user) {
         const nameEl = document.getElementById('mobile-user-name');
-        if (nameEl) nameEl.textContent = user.display_name || user.email || 'ユーザー';
+        if (nameEl) nameEl.textContent = data.user.display_name || data.user.email || 'ユーザー';
       }
     }
   } catch (e) {

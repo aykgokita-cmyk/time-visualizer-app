@@ -1551,14 +1551,15 @@
       try {
         const res = await fetch('/api/me');
         if (res.ok) {
-          const user = await res.json();
-          if (user && user.authenticated) {
+          const data = await res.json();
+          if (data && data.authenticated && data.user) {
+            const user = data.user;
             const nameEl = document.getElementById('pcUserDisplayName');
             const avatarEl = document.getElementById('pcUserAvatar');
             const subEl = document.getElementById('pcUserSub');
             if (nameEl) nameEl.textContent = user.display_name || user.email || 'ユーザー';
             if (avatarEl) avatarEl.textContent = (user.display_name || user.email || 'ユ')[0].toUpperCase();
-            if (subEl) subEl.textContent = user.is_demo ? 'デモ利用中' : (user.email || 'ログイン中');
+            if (subEl) subEl.textContent = data.isDemoMode ? 'デモ利用中' : (user.email || 'ログイン中');
           }
         }
       } catch (e) {
@@ -1636,7 +1637,8 @@
           const text = document.getElementById('apiStatusText');
           if (badge && text) {
             badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 shadow-sm';
-            text.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> リアルタイム同期中 (Socket.io)';
+            const count = (typeof appData !== 'undefined' && appData) ? Object.keys(appData).length : 0;
+            text.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> リアルタイム同期中 (${count}日分)`;
           }
         });
 

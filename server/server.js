@@ -168,6 +168,10 @@ if (isGoogleOAuthConfigured) {
 
 // ユーザーID解決ヘルパー
 function getUserId(req) {
+  // 開発・テスト用リンク設定 (LINK_DEV_USER=true) が有効な場合は、確実に田中のテストデータ (ID: 1) を参照
+  if (process.env.LINK_DEV_USER === 'true') {
+    return 1;
+  }
   if (req.user && req.user.id) return req.user.id;
   if (!isGoogleOAuthConfigured) return DEMO_USER_ID;
   return req.query && req.query.userId ? Number(req.query.userId) : DEMO_USER_ID;
