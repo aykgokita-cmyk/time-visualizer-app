@@ -101,31 +101,53 @@ if (isGoogleOAuthConfigured) {
       db.get('SELECT * FROM users WHERE google_sub = ? OR email = ?', [googleSub, email], (err, existingUser) => {
         if (err) return done(err);
 
-        if (existingUser) {
-          // Google sub や 表示名のアップデート
-          if (!existingUser.google_sub) {
-            db.run('UPDATE users SET google_sub = ?, display_name = ? WHERE id = ?', [googleSub, displayName, existingUser.id]);
-            existingUser.google_sub = googleSub;
-            existingUser.display_name = displayName;
-          }
-          return done(null, existingUser);
-        }
-
-        // 3. 開発用設定: 初回ログイン時に田中(ID: 1)の既存テストデータに自動リンク
+        // 開発用リンク設定 (LINK_DEV_USER=true):
+        // ログインしたGoogleアカウントを田中 (User ID: 1) のテストデータに自動紐付け
         if (process.env.LINK_DEV_USER === 'true') {
-          db.get('SELECT * FROM users WHERE id = 1 AND google_sub IS NULL', [], (err, devUser) => {
+          if (existingUser && existingUser.id === 1) {
+            return done(null, existingUser);
+          }
+
+          db.get('SELECT * FROM users WHERE id = 1', [], (err, devUser) => {
             if (!err && devUser) {
-              db.run('UPDATE users SET google_sub = ?, email = ?, display_name = ? WHERE id = 1', [googleSub, email, displayName], function(updateErr) {
-                if (updateErr) return done(updateErr);
-                return done(null, { ...devUser, google_sub: googleSub, email, display_name: displayName });
+              // 既に ID != 1 で作成されていた重複ユーザー（例: ID 16）があれば削除して整理
+              db.serialize(() => {
+                if (existingUser && existingUser.id !== 1) {
+                  db.run('DELETE FROM time_blocks WHERE user_id = ?', [existingUser.id]);
+                  db.run('DELETE FROM daily_logs WHERE user_id = ?', [existingUser.id]);
+                  db.run('DELETE FROM users WHERE id = ?', [existingUser.id]);
+                }
+                db.run('UPDATE users SET google_sub = ?, email = ?, display_name = ? WHERE id = 1',
+                  [googleSub, email, displayName],
+                  function(updateErr) {
+                    if (updateErr) return done(updateErr);
+                    console.log(`[Auth] LINK_DEV_USER=true: Googleアカウント (${email}) を田中 (ID: 1) のテストデータに紐付けました`);
+                    return done(null, { ...devUser, id: 1, google_sub: googleSub, email, display_name: displayName });
+                  }
+                );
               });
               return;
             }
 
-            // 田中がすでにリンク済みの場合は新規ユーザーとして追加
-            insertNewUser();
+            // ID 1 が見つからない場合は通常処理
+            handleStandardUser();
           });
-        } else {
+          return;
+        }
+
+        handleStandardUser();
+
+        function handleStandardUser() {
+          if (existingUser) {
+            // Google sub や 表示名のアップデート
+            if (!existingUser.google_sub) {
+              db.run('UPDATE users SET google_sub = ?, display_name = ? WHERE id = ?', [googleSub, displayName, existingUser.id]);
+              existingUser.google_sub = googleSub;
+              existingUser.display_name = displayName;
+            }
+            return done(null, existingUser);
+          }
+
           insertNewUser();
         }
 
