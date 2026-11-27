@@ -38,12 +38,10 @@ out/
 .env.*.local
 client_secret*.json
 
-# SQLite 実行時稼働データ（アプリ実行中に更新されるためGit管理から除外）
-*.sqlite
+# SQLite 実行時一時ファイルのみ除外 (WAL / SHM)
 *.sqlite-shm
 *.sqlite-wal
-life._log.sqlite
 life_log.sqlite
 
-# ただし、EC2デプロイ初期データ用のシードファイルはGitで共有する
-!life._log.sqlite.seed
+# 田中の1年分テストデータ本体（今回はGitで直接管理してEC2へ配布）
+!life._log.sqlite

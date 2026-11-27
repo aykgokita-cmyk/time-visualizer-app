@@ -1,43 +1,8 @@
-const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// プロジェクトルートディレクトリ（server の親ディレクトリ）
-const rootDir = path.resolve(__dirname, '..');
-
-// DB_PATH はプロジェクトルートの life._log.sqlite を確実に参照
-const DB_PATH = process.env.DB_PATH || path.resolve(rootDir, 'life._log.sqlite');
-
-// SEED_PATH もプロジェクトルートの life._log.sqlite.seed を優先探索
-const candidateSeedPaths = [
-  process.env.DB_SEED_PATH,
-  path.resolve(rootDir, 'life._log.sqlite.seed'),
-  path.resolve(process.cwd(), 'life._log.sqlite.seed'),
-  path.resolve(__dirname, 'life._log.sqlite.seed')
-].filter(Boolean);
-
-const SEED_PATH = candidateSeedPaths.find(p => fs.existsSync(p)) || path.resolve(rootDir, 'life._log.sqlite.seed');
-
-// 自動復元条件:
-// 1. DB_PATH が存在しない場合
-// 2. または DB_PATH が存在してもサイズが 500KB 未満の場合（367日分のシードデータ約778KBが入っていない未初期化・少量DB）
-const isDbMissing = !fs.existsSync(DB_PATH);
-const isDbIncomplete = fs.existsSync(DB_PATH) && fs.statSync(DB_PATH).size < 500000;
-
-if ((isDbMissing || isDbIncomplete) && fs.existsSync(SEED_PATH)) {
-  try {
-    console.log(`[DB Info] テストデータシードファイル (${SEED_PATH}) からデータベースを展開・復元します -> ${DB_PATH}`);
-    // 残っている古い WAL / SHM ファイルを必ず削除（古い1件のWALが上書き適用されるのを防ぐ）
-    [DB_PATH + '-wal', DB_PATH + '-shm'].forEach(f => {
-      if (fs.existsSync(f)) {
-        try { fs.unlinkSync(f); } catch (e) {}
-      }
-    });
-    fs.copyFileSync(SEED_PATH, DB_PATH);
-  } catch (copyErr) {
-    console.error(`[DB Error] シードファイルのコピーに失敗しました:`, copyErr);
-  }
-}
+// プロジェクトルート直下の life._log.sqlite を直接参照
+const DB_PATH = process.env.DB_PATH || path.resolve(__dirname, '../life._log.sqlite');
 
 let dbInstance = null;
 
@@ -90,7 +55,6 @@ function initDatabase() {
       `);
 
       // 2. daily_logs テーブル (日次ログ: 睡眠・満足度・一言メモ)
-      // ※ 既存コードとの互換性確保のため score, free_hours も保持
       db.run(`
         CREATE TABLE IF NOT EXISTS daily_logs (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -127,28 +91,13 @@ function initDatabase() {
       db.run('CREATE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub);');
       db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);');
       db.run('CREATE INDEX IF NOT EXISTS idx_daily_logs_user_date ON daily_logs(user_id, log_date);');
-      db.run('CREATE INDEX IF NOT EXISTS idx_time_blocks_user_date ON time_blocks(user_id, log_date);', async (err) => {
+      db.run('CREATE INDEX IF NOT EXISTS idx_time_blocks_user_date ON time_blocks(user_id, log_date);', (err) => {
         if (err) {
           console.error('[DB Error] データベース初期化に失敗しました:', err);
           return reject(err);
         }
         console.log('[DB Info] データベース初期化完了 (テーブル・インデックス・PRAGMA適用済)');
-
-        // データ件数の確認 & 不足時の自動シード生成（二重の安全策）
-        db.get('SELECT count(*) as count FROM daily_logs WHERE user_id = 1', async (countErr, countRow) => {
-          const currentCount = countRow ? countRow.count : 0;
-          if (currentCount < 10) {
-            console.log(`[DB Info] 田中 (User 1) のデータが ${currentCount} 件のため、自動シードを実行して365日分を生成します...`);
-            try {
-              const { seed } = require('./seed');
-              await seed();
-              console.log('[DB Info] ✅ 自動シード完了: 田中 (User 1) の365日分データを生成しました！');
-            } catch (seedErr) {
-              console.error('[DB Error] 自動シード実行エラー:', seedErr);
-            }
-          }
-          resolve();
-        });
+        resolve();
       });
     });
   });
