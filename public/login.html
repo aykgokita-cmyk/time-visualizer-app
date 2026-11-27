@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ログイン - Time Visualizer</title>
   <!-- Favicon -->
-  <link id="faviconTag" rel="icon" type="image/jpeg" href="/icons/icon_pc.jpg">
-  <link id="appleIconTag" rel="apple-touch-icon" href="/icons/icon_pc.jpg">
+  <link rel="icon" type="image/jpeg" href="/icons/icon_pc.jpg">
+  <link rel="apple-touch-icon" href="/icons/icon_pc.jpg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,7 @@
     <!-- ロゴ・ブランドヘッダー -->
     <div class="text-center">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden mb-4 shadow-md shadow-blue-500/10 border border-slate-100 bg-white">
-        <img id="loginBrandIcon" src="/icons/icon_pc.jpg" alt="Time Visualizer" class="w-full h-full object-cover">
+        <img src="/icons/icon_pc.jpg" alt="Time Visualizer" class="w-full h-full object-cover">
       </div>
       <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Time Visualizer</h1>
       <p class="mt-2 text-sm text-slate-500">
@@ -89,26 +89,6 @@
       const params = new URLSearchParams(window.location.search);
       const returnTo = params.get('returnTo') || '/dashboard';
       const error = params.get('error');
-
-      // アイコンの自動切り替え（スマホ版: /icons/icon.jpg / PC版: /icons/icon_pc.jpg）
-      function updateBrandIcons() {
-        const isMobileMode = returnTo.includes('mobile') || window.innerWidth < 640 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const iconPath = isMobileMode ? '/icons/icon.jpg' : '/icons/icon_pc.jpg';
-
-        const brandIcon = document.getElementById('loginBrandIcon');
-        if (brandIcon && brandIcon.getAttribute('data-src') !== iconPath) {
-          brandIcon.src = iconPath;
-          brandIcon.setAttribute('data-src', iconPath);
-        }
-
-        const fav = document.getElementById('faviconTag');
-        if (fav) fav.href = iconPath;
-        const appleFav = document.getElementById('appleIconTag');
-        if (appleFav) appleFav.href = iconPath;
-      }
-
-      updateBrandIcons();
-      window.addEventListener('resize', updateBrandIcons);
 
       // 戻り先リンクの設定
       const googleBtn = document.getElementById('googleLoginBtn');
